@@ -1,0 +1,7 @@
+storage/**
+!storage/.env.dist
+.idea/
+.venv/
+__pycache__/
+test/
+venv
