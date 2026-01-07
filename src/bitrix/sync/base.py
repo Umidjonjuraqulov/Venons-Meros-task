@@ -68,7 +68,8 @@ class BaseBitSync:
             try:
                 group_bit_id = int(group.get("GROUP_ID"))
                 name = group.get("GROUP_NAME")
-                if group_bit_id not in groups_in_db:
+                is_extranet = group.get("IS_EXTRANET", None)
+                if group_bit_id not in groups_in_db and is_extranet == None:
                     folder_id = await self.bitrix.create_folder(
                         target_id=self.bitrix.conf.data.user_storage_id, name=name, subfolder=False
                     )
