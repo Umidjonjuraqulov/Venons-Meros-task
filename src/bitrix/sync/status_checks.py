@@ -216,9 +216,9 @@ class StatusCheck:
             if not (self.roles.executor and self.roles.executor.user.bit_user_id != self.self_bitrix_id):
                 return StageNotify.RESPONSIBLE_NONE
 
-            # Check allocated_time
-            if not (self.task.allocated_time and self.task.allocated_time >= 60):
-                return StageNotify.ALLOCATED_TIME_NONE
+            # # Check allocated_time
+            # if not (self.task.allocated_time and self.task.allocated_time >= 60):
+            #     return StageNotify.ALLOCATED_TIME_NONE
 
             # Check to Stage
             if not (
