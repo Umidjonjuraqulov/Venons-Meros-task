@@ -194,7 +194,7 @@ class TaskGroupAdmin(ModelView, model=TaskGroup):
     icon = "fa-solid fa-layer-group"
     can_create = False
     save_as_continue = False
-    can_delete = False
+    can_delete = True
 
     column_labels = {
         TaskGroup.title: "Название",
@@ -256,7 +256,7 @@ class StageAdmin(ModelView, model=Stage):
     can_create = False
     can_edit = True
     save_as_continue = True
-    can_delete = False
+    can_delete = True
 
     column_labels = {
         Stage.group: "Группа задачи",
