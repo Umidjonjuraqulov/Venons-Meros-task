@@ -106,15 +106,17 @@ async def registration_phone(message: Message, state: FSMContext, bot: Bot):
             job_title=job_title,
             phone=phone_number,
             user=message.from_user.full_name if not message.from_user.username else f"@{message.from_user.username}",
-            stage=REG_STATUS_WAIT + f' <a href="{conf.project_url}/admin/user/edit/{user.id}">Открыть</a>'
+            stage=f' <a href="{conf.project_url}/admin/user/edit/{user.id}">Открыть</a>'
 
         )
-        ## remove confirmation
-        # await bot.send_message(conf.notify_chat_id, notify, reply_markup=create_confirm_ikb(message.from_user.id))
+        await bot.send_message(conf.notify_chat_id, notify)
 
         # confirm user immediently
         user = await conf.bitrix_db.update_user(update_to=UserModel(access_level=user.access_level), tg_id=int(user.tg_id))
         conf.user_manager.update_user(tg_id=int(user.tg_id), access_level=user.access_level)
+
+        msg = _("reg.success", language)
+        await bot.send_message(message.from_user.id, msg)
         
 
     data = await state.get_data()
