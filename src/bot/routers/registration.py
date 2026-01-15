@@ -14,6 +14,9 @@ from src.bot.structures.keyboards import phone_rkb, create_confirm_ikb
 from src.i18n.locales import LANGUAGE_CHOICES
 from src.i18n.i18n import translator, translate as _
 
+from src.db.models import User as UserModel
+
+
 registration_router = Router(name="registration")
 
 REG_STATUS_WAIT = "🕐 Ожидает доступа"
@@ -90,13 +93,13 @@ async def registration_phone(message: Message, state: FSMContext, bot: Bot):
 
         user = await conf.bitrix_db.add_user(
             full_name=name,
-            access_level=AccessLevelConst.CHECKING,
+            access_level=AccessLevelConst.USER,
             tg_id=message.from_user.id,
             job_title=job_title,
             phone=phone_number,
             language=language,
         )
-        conf.user_manager.update_user(message.from_user.id, AccessLevelConst.CHECKING, lang)
+        conf.user_manager.update_user(message.from_user.id, AccessLevelConst.USER, lang)
 
         notify = REG_NOTIFY_ANS.format(
             name=name,
@@ -106,7 +109,13 @@ async def registration_phone(message: Message, state: FSMContext, bot: Bot):
             stage=REG_STATUS_WAIT + f' <a href="{conf.project_url}/admin/user/edit/{user.id}">Открыть</a>'
 
         )
-        await bot.send_message(conf.notify_chat_id, notify, reply_markup=create_confirm_ikb(message.from_user.id))
+        ## remove confirmation
+        # await bot.send_message(conf.notify_chat_id, notify, reply_markup=create_confirm_ikb(message.from_user.id))
+
+        # confirm user immediently
+        user = await conf.bitrix_db.update_user(update_to=UserModel(access_level=user.access_level), tg_id=int(user.tg_id))
+        conf.user_manager.update_user(tg_id=int(user.tg_id), access_level=user.access_level)
+        
 
     data = await state.get_data()
     language = data["language"]
