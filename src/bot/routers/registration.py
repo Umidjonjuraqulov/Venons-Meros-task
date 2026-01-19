@@ -111,9 +111,11 @@ async def registration_phone(message: Message, state: FSMContext, bot: Bot):
         )
         await bot.send_message(conf.notify_chat_id, notify)
 
+        # give role ID 2
         # confirm user immediently
         user = await conf.bitrix_db.update_user(update_to=UserModel(access_level=user.access_level), tg_id=int(user.tg_id))
         conf.user_manager.update_user(tg_id=int(user.tg_id), access_level=user.access_level)
+
 
         msg = _("reg.success", language)
         await bot.send_message(message.from_user.id, msg)

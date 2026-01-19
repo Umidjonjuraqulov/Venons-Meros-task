@@ -215,6 +215,12 @@ class BitrixDB:
             user.ban_time = update_to.ban_time or user.ban_time
             user.language = update_to.language or user.language
 
+            # set Role with name "Заказчик"
+            role_result = await session.execute(select(Role).where(Role.name == "Заказчик"))
+            role = role_result.unique().scalar_one_or_none()
+            if role:
+                user.role_id = role.id
+
             await session.commit()
             return user
 
