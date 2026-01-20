@@ -139,7 +139,7 @@ async def create_task(
                 f'\n<a href="{conf.project_url}/admin/department-user/create">Прикрепить к подразделению</a>'
             )
             await conf.bitrix_db.add_task_user(user_id=task_user_db.id, task_id=task_in_db.id, role=TaskRole.MANAGER)
-            await conf.notify_manager.notify(msg=warning_msg, tg_ids=[conf.notify_chat_id])
+            # await conf.notify_manager.notify(msg=warning_msg, tg_ids=[conf.notify_chat_id])
 
         return True
 
