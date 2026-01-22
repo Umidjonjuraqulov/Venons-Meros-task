@@ -98,6 +98,9 @@ class UpdateTask:
 
     async def _check_stage(self):
         now_bit_stage_id = int(self.bit_task.get("stageId"))
+        if not now_bit_stage_id:
+            now_bit_stage_id = self.all_stages[0].bit_stage_id
+            
         db_bit_stage_id = self.db_task.stage.bit_stage_id if self.db_task.stage else None
         if db_bit_stage_id == now_bit_stage_id:
             return
