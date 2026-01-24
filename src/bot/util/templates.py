@@ -12,7 +12,7 @@ from src.static.message_answers import (
     TaskNFY, MyTaskANS, DONT_CHOOSE_ANS, MANAGER_TEXT, change_tag
 )
 
-from src.db.models import Task, File, TaskGroup, TaskUser
+from src.db.models import Task, File, TaskGroup, TaskUser, Region
 from src.classes.data_classes import TaskInfo
 from src.classes.cls_const import TaskRole, FileTypeConst, StageType
 
@@ -26,24 +26,29 @@ async def create_task(
         bot: Bot,
         title: str, description: str,
         files: list[str],  # [tg_file_id, file_name, file_type]
-        user_tg_id: int, group: str,
+        user_tg_id: int, group: str, region: str | None,
         deadline: datetime = None
 ) -> bool:
     try:
         # Get info task_group_db, task_user_db
         task_group_db = await conf.bitrix_db.get_task_group(title=group)
         task_group_db = task_group_db[0]
+        task_region_db = await conf.bitrix_db.get_regions(group_id=task_group_db.id, name=region)
+        task_region_db = task_region_db[0]
         task_user_db = await conf.bitrix_db.get_user(tg_id=user_tg_id)
         task_user_db = task_user_db[0]
+        if conf.debug:
+            current_user_db = task_user_db
+        else:
+            current_user_db = await conf.bitrix_db.get_user(bit_id=conf.bitrix.conf.data.current_id)
+            current_user_db = current_user_db[0]
 
-        current_user_db = await conf.bitrix_db.get_user(bit_id=conf.bitrix.conf.data.current_id)
-        current_user_db = current_user_db[0]
         """used for the role of performer"""
 
         # Take a place in the database to get Task id
         task_in_db = Task(
             title=title, description=description, created_date=datetime.now(),
-            deadline=deadline, group_id=task_group_db.id
+            deadline=deadline, group_id=task_group_db.id, region_id=task_region_db.id
         )
         task_in_db = await conf.bitrix_db.add_task(task_in_db)
 
@@ -180,6 +185,7 @@ async def get_tasks_list(tg_id: int, roles: list[str]) -> list[TaskInfo]:
                     title=task_user.task.title.translate(change_tag),
                     description=task_user.task.description[0:2048].translate(change_tag),
                     group=task_user.task.group.title,
+                    region=task_user.task.region.name if task_user.task.region else DONT_CHOOSE_ANS,
                     stage=task_user.task.stage.title if task_user.task.stage else "None",
                     create_date=task_user.task.created_date,
                     deadline=task_user.task.deadline,
@@ -244,6 +250,7 @@ def format_task_comments(
         manager=task_info.manager or DONT_CHOOSE_ANS,
         observers=MyTaskANS.OBSERVERS_JOIN.join(task_info.observers) if task_info.observers else DONT_CHOOSE_ANS,
         group=task_info.group,
+        region=task_info.region,
         stage=task_info.stage
     )
     comments = comments[::-1]
@@ -370,6 +377,7 @@ async def write_comment(
             manager=task_users_name.get("manager"),
             observers=observers,
             group=task.group,
+            region=task.region,
             stage=task.stage
         )
         notify += text if file_info else TaskNFY.ADD_COMMENT.format(
@@ -587,3 +595,12 @@ def can_delete(task: Task) -> bool:
         return False
 
     return True
+
+
+async def get_regions_by_task_group(task_group_name: str) -> list[str]:
+    group = await conf.bitrix_db.get_task_group(title=task_group_name)
+    if not group:
+        return []
+
+    regions = await conf.bitrix_db.get_regions(group_id=group[0].id)
+    return [region.name for region in regions]

@@ -150,6 +150,7 @@ class TaskGroup(Base):
     # relationships
     stages: Mapped[list["Stage"]] = relationship(back_populates="group", cascade="all, delete-orphan")
     tasks: Mapped[list["Task"]] = relationship(back_populates="group", cascade="all, delete-orphan")
+    regions: Mapped[list["Region"]] = relationship(back_populates="task_group", cascade="all, delete-orphan")
     users_group_roles: Mapped[list["UserGroupRules"]] = relationship(
         "UserGroupRules", back_populates="group", uselist=True
     )
@@ -203,6 +204,9 @@ class Task(Base):
     group_id: Mapped[int] = mapped_column(
         sa.ForeignKey("task_groups.id", ondelete="CASCADE"), unique=False, nullable=False
     )
+    region_id: Mapped[int] = mapped_column(
+        sa.ForeignKey("regions.id", ondelete="SET NULL"), unique=False, nullable=True
+    )
 
     # relationships
     task_users: Mapped[list["TaskUser"]] = relationship(
@@ -212,6 +216,7 @@ class Task(Base):
     group: Mapped["TaskGroup"] = relationship(back_populates="tasks", lazy="joined")
     files: Mapped[list["File"]] = relationship(back_populates="task", cascade="all, delete-orphan")
     comments: Mapped[list["Comment"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+    region: Mapped["Region"] = relationship(back_populates="tasks", lazy="joined")
 
     def __str__(self):
         return self.title
@@ -297,3 +302,17 @@ class UserGroupRules(Base):
     # relationships
     user: Mapped["User"] = relationship(back_populates="users_group_roles", lazy="joined")
     group: Mapped["TaskGroup"] = relationship(back_populates="users_group_roles")
+
+
+class Region(Base):
+    __tablename__ = "regions"
+    name: Mapped[str] = mapped_column(unique=False, nullable=False)
+    task_group_id: Mapped[int] = mapped_column(sa.ForeignKey("task_groups.id", ondelete="CASCADE"), nullable=False)
+
+    # relationships
+    task_group: Mapped["TaskGroup"] = relationship(lazy="joined")
+    tasks: Mapped[list["Task"]] = relationship(back_populates="region", lazy="joined")
+
+
+    def __str__(self):
+        return self.name

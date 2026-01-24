@@ -5,7 +5,7 @@ from starlette.responses import RedirectResponse
 
 from src.db.models import (
     User, Task, TaskUser, File, TaskGroup, Stage, Comment, Department, DepartmentUser, Role, RoleAccess, UserRole,
-    UserGroupRules
+    UserGroupRules, Region
 )
 from wtforms import SelectField
 
@@ -354,7 +354,7 @@ class TaskAdmin(ModelView, model=Task):
         Task.files, Task.comments, Task.unlimited_test, Task.paid
     ]
     form_columns = [
-        Task.title, Task.description, Task.bit_folder_id, Task.bit_chat_id, Task.group, Task.stage,
+        Task.title, Task.description, Task.bit_folder_id, Task.bit_chat_id, Task.group, Task.region, Task.stage,
         Task.queue_date, Task.test_date, Task.closed_date, Task.allocated_time, Task.unlimited_test, Task.paid
     ]
 
@@ -633,3 +633,22 @@ class UserGroupRulesAdmin(ModelView, model=UserGroupRules):
             ]
         }
     }
+
+
+class RegionAdmin(ModelView, model=Region):
+    page_size = 100
+    name = "Регион"
+    name_plural = "Регионы"
+    icon = "fa-solid fa-map"
+    can_create = True
+    save_as_continue = False
+
+    column_labels = {
+        Region.name: "Название",
+        Region.tasks: "Задачи",
+        Region.task_group: "Группа",
+    }
+
+    column_list = [Region.id, Region.name, Region.task_group]
+    column_details_list = [Region.id, Region.name, Region.tasks]
+    form_columns = [Region.name, Region.task_group]

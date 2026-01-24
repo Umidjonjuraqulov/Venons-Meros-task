@@ -98,16 +98,39 @@ async def user_create_task_group(message: Message, state: FSMContext, language: 
     data = await state.get_data()
     if message.text in data["groups"]:
         can_crate_status = await can_crate(message.from_user.id, message.text)
-
         if can_crate_status is True:
-            await state.set_state(User.create_task_title)
             await state.set_data({"group": message.text})
-            await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+            # filter regions by task group name
+            regions = await get_regions_by_task_group(message.text)
+            if not regions:
+                await state.set_state(User.create_task_title)
+                await state.update_data({"region": None})
+                await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+            else:
+                await state.set_state(User.create_task_region)
+                await state.update_data({"regions": regions})
+                await message.answer(
+                    _("choose_region", language),
+                    reply_markup=build_rkb(regions, language, back=True)
+                )
 
         else:
             await message.answer(_("max_active_tasks", language).format(group=message.text, num=can_crate_status))
     else:
         await message.answer(_("choose_group", language))
+
+
+@user_router.message(User.create_task_region)
+async def user_create_task_region(message: Message, state: FSMContext, language: str):
+    if message.text == _("b.back", language):
+        await to_user_main_menu(message, state, language)
+    data = await state.get_data()
+    if message.text in data["regions"]:
+        await state.set_state(User.create_task_title)
+        await state.update_data({"region": message.text})
+        await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+    else:
+        await message.answer(_("choose_region", language))
 
 
 @user_router.message(User.create_task_title)
@@ -156,13 +179,13 @@ async def user_create_task_file(message: Message, state: FSMContext, bot: Bot, l
 
     elif message.text and message.text == _("b.confirm", language) and data.get("files"):
         await to_user_main_menu(message, state, language, send_msg=_("task.upload", language))
-
         status = await create_task(
             bot=bot,
             title=data["title"],
             description=data["description"],
             files=data["files"],
             group=data["group"],
+            region=data["region"],
             user_tg_id=message.from_user.id
         )
         if status:
@@ -267,7 +290,7 @@ async def user_my_tasks(message: Message, state: FSMContext, language: str):
                 description=task_info.description[0:2048].translate(change_tag),
                 creator=task_info.creator, developer=task_info.developer, manager=task_info.manager,
                 observers=MyTaskANS.OBSERVERS_JOIN.join(task_info.observers or []),
-                group=task_info.group, stage=task_info.stage
+                group=task_info.group, region=task_info.region, stage=task_info.stage
             )
 
             await message.answer(

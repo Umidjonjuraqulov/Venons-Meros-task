@@ -126,6 +126,7 @@ async def format_task_info(task_db_id: int) -> dict:
         title=task_in_db.title,
         description=task_in_db.description,
         group=task_in_db.group.title,
+        region=task_in_db.region.name if task_in_db.region else DONT_CHOOSE_ANS,
         stage=task_in_db.stage.title if task_in_db.stage else "None",
         create_date=task_in_db.created_date,
         deadline=task_in_db.deadline,
@@ -141,7 +142,7 @@ async def format_task_info(task_db_id: int) -> dict:
         task_name=task.title.translate(change_tag), description=task.description[0:2048].translate(change_tag),
         creator=task.creator, developer=task.developer, manager=task.manager,
         observers=MyTaskANS.OBSERVERS_JOIN.join(task.observers or []),
-        group=task.group, stage=task.stage
+        group=task.group, region=task.region, stage=task.stage
     )
 
     return {"selected_task": task, "task_message": msg}

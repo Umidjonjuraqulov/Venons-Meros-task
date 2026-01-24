@@ -9,7 +9,7 @@ from sqlalchemy.sql import ColumnElement
 from sqlalchemy.orm import selectinload
 
 from .models import Base, User, Task, TaskUser, File, TaskGroup, Stage, Comment, Department, DepartmentUser, Role, \
-    UserRole, UserGroupRules
+    UserRole, UserGroupRules, Region
 from src.classes.cls_const import TaskRole, StageType
 
 
@@ -417,6 +417,19 @@ class BitrixDB:
             except Exception as e:
                 print(e)  # LOG
                 return None
+
+    async def get_regions(self, group_id: int = None, name: str = None) -> list[Region]:
+        async with self.session_factory() as session:
+            query = select(Region)
+            if group_id:
+                query = query.filter(Region.task_group_id == group_id)
+            if name:
+                query = query.filter(Region.name == name)
+            try:
+                result = await session.execute(query)
+                return result.scalars().unique().all()
+            except Exception as e:
+                print(e)  # LOG
 
     async def add_task_stage(self, group_id: int, bit_stage_id: int, bit_sort: int, title: str) -> Optional[Stage]:
         async with self.session_factory() as session:

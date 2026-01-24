@@ -13,7 +13,8 @@ from .model_view import (
     UserGroupRulesAdmin,
     TaskUserAdmin,
     FileAdmin,
-    CommentAdmin
+    CommentAdmin,
+    RegionAdmin
 )
 
 all_admin_models = [
@@ -29,5 +30,6 @@ all_admin_models = [
     UserGroupRulesAdmin,
     TaskUserAdmin,
     FileAdmin,
-    CommentAdmin
+    CommentAdmin,
+    RegionAdmin
 ]

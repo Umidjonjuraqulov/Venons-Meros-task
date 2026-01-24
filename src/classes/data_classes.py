@@ -16,6 +16,7 @@ class TaskInfo:
     title: str
     description: str
     group: str
+    region: str
     stage: str
     create_date: datetime
     deadline: datetime | None

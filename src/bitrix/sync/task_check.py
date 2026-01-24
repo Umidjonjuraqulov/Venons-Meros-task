@@ -99,6 +99,7 @@ class TaskSync(BaseBitSync):
                     manager=roles.manager.user.full_name if roles.manager else DONT_CHOOSE_ANS,
                     observers=MyTaskANS.OBSERVERS_JOIN.join([task_user.user.full_name for task_user in roles.observers]),
                     group=task.group.title,
+                    region=task.region.name if task.region else None,
                     stage=task.stage.title if task.stage else None
                 ) + message
 
@@ -307,6 +308,7 @@ class TaskSync(BaseBitSync):
             manager=task_users_name.get("manager"),
             observers=MyTaskANS.OBSERVERS_JOIN.join(task_users_name.get("observers")),
             group=task_in_db[0].group.title,
+            region=task_in_db[0].region.name if task_in_db[0].region else None,
             stage=task_in_db[0].stage.title if task_in_db[0].stage else None,
         )
 
