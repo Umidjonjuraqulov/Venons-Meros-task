@@ -110,7 +110,7 @@ async def user_create_task_group(message: Message, state: FSMContext, language: 
                 await state.set_state(User.create_task_region)
                 await state.update_data({"regions": regions})
                 await message.answer(
-                    _("choose_region", language),
+                    _("task.choose_region", language),
                     reply_markup=build_rkb(regions, language, back=True)
                 )
 
