@@ -108,7 +108,7 @@ async def create_task(
         description_title = f"{MANAGER_TEXT}{manager.full_name}\n"
 
         task = await conf.bitrix.create_task(
-            title=title,
+            title=f"{title} | {region}" if region else title,
             description=description_title + description,
             deadline=deadline, files=bitrix_files,
             group_id=task_group_db.bit_group_id, creator_id=task_user_db.bit_user_id, auditors=list(bit_id_observers)
