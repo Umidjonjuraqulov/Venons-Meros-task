@@ -34,7 +34,7 @@ async def create_task(
         task_group_db = await conf.bitrix_db.get_task_group(title=group)
         task_group_db = task_group_db[0]
         task_region_db = await conf.bitrix_db.get_regions(group_id=task_group_db.id, name=region)
-        task_region_db = task_region_db[0]
+        task_region_db = task_region_db[0] if task_region_db else None
         task_user_db = await conf.bitrix_db.get_user(tg_id=user_tg_id)
         task_user_db = task_user_db[0]
         if conf.debug:
@@ -48,7 +48,7 @@ async def create_task(
         # Take a place in the database to get Task id
         task_in_db = Task(
             title=title, description=description, created_date=datetime.now(),
-            deadline=deadline, group_id=task_group_db.id, region_id=task_region_db.id
+            deadline=deadline, group_id=task_group_db.id, region_id=task_region_db.id if task_region_db else None
         )
         task_in_db = await conf.bitrix_db.add_task(task_in_db)
 
@@ -174,7 +174,7 @@ async def get_tasks_list(tg_id: int, roles: list[str]) -> list[TaskInfo]:
 
             developer_name = task_users_role.executor.user.full_name if task_users_role.executor else DONT_CHOOSE_ANS
             creator_name = task_users_role.creator.user.full_name if task_users_role.creator else DONT_CHOOSE_ANS
-            manager_name = task_users_role.manager.user.full_name if task_users_role.manager else DONT_CHOOSE_ANS
+            manager_name = task_users_`role.manager.user.full_name if task_users_role.manager else DONT_CHOOSE_ANS
             observers = [user.user.full_name for user in task_users_role.observers]
 
             # when task creating error
