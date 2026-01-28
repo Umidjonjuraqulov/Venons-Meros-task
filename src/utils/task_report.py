@@ -158,9 +158,9 @@ class TaskExport:
         ws.title = "Задачи"
         columns = [
             "Исполнитель", "Статус", "Задача", "Заказчик",
-            "Срок", "На тестирование", "Принят", "Разниц. теста", "Разниц. принятия"
+            "Срок", "На тестирование", "Создан", "Принят"
         ]
-        columns_width = [30, 20, 40, 30, 16, 16, 16, 16, 16]
+        columns_width = [30, 20, 40, 30, 16, 16, 16, 16]
         ws.append(columns)
         for i, col in enumerate(columns):
             cell = ws.cell(row=1, column=i + 1)
@@ -182,8 +182,9 @@ class TaskExport:
                 task.executor, task.stage, f"{task.task_bit_id} - {task.task_title}", task.creator,
                 task.deadline.strftime("%d.%m.%Y %H:%M") if task.deadline else "-",
                 task.test_date.strftime("%d.%m.%Y %H:%M") if task.test_date else "-",
+                task.created.strftime("%d.%m.%Y %H:%M") if task.created else "-",
                 task.closed.strftime("%d.%m.%Y %H:%M") if task.closed else "-",
-                expired_test_time, expired_close_time
+
             ]
             ws.append(row)
             if expired_test_time:
@@ -212,7 +213,7 @@ class TaskExport:
 
         data = []
         for task in tasks:
-            expired_test_time, expired_close_time = self.calc_expired_time(task)
+            # expired_test_time, expired_close_time = self.calc_expired_time(task)
 
             row = [
                 task.executor if len(task.executor) < 31 else task.executor[:29] + ".",
@@ -221,8 +222,8 @@ class TaskExport:
                 task.creator if len(task.creator) < 31 else task.creator[:29] + ".",
                 task.deadline.strftime("%d.%m.%Y %H:%M") if task.deadline else "-",
                 task.test_date.strftime("%d.%m.%Y %H:%M") if task.test_date else "-",
-                task.closed.strftime("%d.%m.%Y %H:%M") if task.closed else "-",
-                expired_test_time, expired_close_time
+                task.created.strftime("%d.%m.%Y %H:%M") if task.closed else "-",
+                task.closed.strftime("%d.%m.%Y %H:%M") if task.closed else "-"
             ]
             data.append(row)
 
@@ -230,7 +231,7 @@ class TaskExport:
             data,
             columns=[
                 "Исполнитель", "Статус", "Задача", "Заказчик",
-                "Срок", "На тестирование", "Принят", "Разниц. теста", "Разниц. принятия"
+                "Срок", "На тестирование", "Создан", "Принят"
             ]
         )
 
@@ -249,7 +250,7 @@ class TaskExport:
         table.set_fontsize(10)
 
         # Устанавливаем ширину столбцов
-        col_widths = [0.15, 0.1, 0.3, 0.15, 0.1, 0.1, 0.1, 0.1, 0.1]  # пример ширины столбцов в пропорциях
+        col_widths = [0.15, 0.1, 0.3, 0.15, 0.1, 0.1, 0.1, 0.1]  # пример ширины столбцов в пропорциях
         for i, width in enumerate(col_widths):
             table.auto_set_column_width(i)  # отключаем автоматическое выставление ширины столбцов
             for j in range(len(df) + 1):
