@@ -262,11 +262,11 @@ class TaskExport:
             if i == 0:
                 cell.set_text_props(weight="bold")
 
-            if j == len(df.columns) - 2 and i > 0 and df.iloc[i - 1, -2]:  # columns[-2]
-                cell.set_facecolor("#CCCCFF")
+            # if j == len(df.columns) - 2 and i > 0 and df.iloc[i - 1, -2]:  # columns[-2]
+            #     cell.set_facecolor("#CCCCFF")
 
-            if j == len(df.columns) - 1 and i > 0 and df.iloc[i - 1, -1]:  # columns[-1]
-                cell.set_facecolor("#FFCCCC")
+            # if j == len(df.columns) - 1 and i > 0 and df.iloc[i - 1, -1]:  # columns[-1]
+            #     cell.set_facecolor("#FFCCCC")
 
         plt.tight_layout()
 
