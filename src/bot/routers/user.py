@@ -161,7 +161,7 @@ async def user_create_task_description(message: Message, state: FSMContext, lang
     elif message.text:
         await state.set_state(User.create_task_files)
         await state.update_data({"description": message.text})
-        await message.answer(_("task.file", language))
+        await message.answer(_("task.file", language), reply_markup=task_file_rkb(language))
 
     else:
         await message.answer(_("task.description", language)+"!")
@@ -177,13 +177,19 @@ async def user_create_task_file(message: Message, state: FSMContext, bot: Bot, l
     elif message.text == _("b.cancel", language):
         await to_user_main_menu(message, state, language)
 
-    elif message.text and message.text == _("b.confirm", language) and data.get("files"):
+    elif (
+        (
+            message.text and message.text == _("b.confirm", language) and data.get("files")
+        )
+        or
+        message.text == _("b.skip", language)
+    ):
         await to_user_main_menu(message, state, language, send_msg=_("task.upload", language))
         status = await create_task(
             bot=bot,
             title=data["title"],
             description=data["description"],
-            files=data["files"],
+            files=data.get("files", []),
             group=data["group"],
             region=data["region"],
             user_tg_id=message.from_user.id

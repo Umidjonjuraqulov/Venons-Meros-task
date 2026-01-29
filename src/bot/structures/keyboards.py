@@ -31,6 +31,14 @@ def back_and_cancel_rkb(language: str) -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
+def task_file_rkb(language: str) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=_("b.skip", language))],
+            [KeyboardButton(text=_("b.back", language)), KeyboardButton(text=_("b.cancel", language))],
+            ],
+        resize_keyboard=True
+    )
 
 def choose_language(language: str="ru", back_bt=True) -> ReplyKeyboardMarkup:
     result = ReplyKeyboardBuilder()
