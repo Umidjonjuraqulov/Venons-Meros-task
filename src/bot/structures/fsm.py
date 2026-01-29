@@ -10,6 +10,7 @@ class User(StatesGroup):
     create_task_title = State()
     create_task_description = State()
     create_task_files = State()
+    create_task_executor = State()
 
     # My tasks
     my_tasks = State()

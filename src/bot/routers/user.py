@@ -103,9 +103,8 @@ async def user_create_task_group(message: Message, state: FSMContext, language: 
             # filter regions by task group name
             regions = await get_regions_by_task_group(message.text)
             if not regions:
-                await state.set_state(User.create_task_title)
                 await state.update_data({"region": None})
-                await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+                await to_create_task_executor(message, state, language)
             else:
                 await state.set_state(User.create_task_region)
                 await state.update_data({"regions": regions})
@@ -126,17 +125,32 @@ async def user_create_task_region(message: Message, state: FSMContext, language:
         await to_user_main_menu(message, state, language)
     data = await state.get_data()
     if message.text in data["regions"]:
-        await state.set_state(User.create_task_title)
         await state.update_data({"region": message.text})
-        await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+        await to_create_task_executor(message, state, language)
     else:
         await message.answer(_("choose_region", language))
+
+
+@user_router.message(User.create_task_executor)
+async def user_create_task_executor(message: Message, state: FSMContext, language: str):
+    if message.text == _("b.back", language):
+        await to_user_main_menu(message, state, language)
+    data = await state.get_data()
+    if message.text in data["users"]:
+        index, name = message.text.split(". ", maxsplit=1)
+        users_id_by_index: dict = data["users_id_by_index"]
+        executor_db_id = users_id_by_index.get(int(index))
+        await state.set_state(User.create_task_title)
+        await state.update_data({"executor_id": executor_db_id})
+        await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+    else:
+        await message.answer(_("task.choose_executor", language))
 
 
 @user_router.message(User.create_task_title)
 async def user_create_task_title(message: Message, state: FSMContext, language: str):
     if message.text == _("b.back", language):
-        await to_create_task(message, state, language)
+        await to_create_task_executor(message, state, language)
 
     elif message.text == _("b.cancel", language):
         await to_user_main_menu(message, state, language)
@@ -192,7 +206,8 @@ async def user_create_task_file(message: Message, state: FSMContext, bot: Bot, l
             files=data.get("files", []),
             group=data["group"],
             region=data["region"],
-            user_tg_id=message.from_user.id
+            user_tg_id=message.from_user.id,
+            executor_id=data.get("executor_id")
         )
         if status:
             await message.answer(_("task.done", language))

@@ -51,6 +51,12 @@ class RoleAccess(Base):
     role: Mapped["Role"] = relationship(back_populates="access")
     stage: Mapped["Stage"] = relationship(back_populates="roles")
 
+user_region = sa.Table(
+    "user_region",
+    Base.metadata,
+    sa.Column("user_id", sa.ForeignKey("users.id"), primary_key=True),
+    sa.Column("region_id", sa.ForeignKey("regions.id"), primary_key=True),
+)
 
 class User(Base):
     __tablename__ = "users"
@@ -67,6 +73,9 @@ class User(Base):
     )
     max_active_tasks: Mapped[int] = mapped_column(sa.Integer, unique=False, nullable=True)
     ban_time: Mapped[datetime | None] = mapped_column(sa.DateTime, unique=False, nullable=True)
+    group_id: Mapped[int] = mapped_column(
+        sa.ForeignKey("task_groups.id", ondelete="SET NULL"), unique=False, nullable=True
+    )
 
     # relationships
     departments: Mapped[list["DepartmentUser"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -78,6 +87,8 @@ class User(Base):
     users_group_roles: Mapped[list["UserGroupRules"]] = relationship(
         "UserGroupRules", back_populates="user", uselist=True
     )
+    group: Mapped["TaskGroup"] = relationship(back_populates="users")
+    regions: Mapped[list["Region"]] = relationship(secondary=user_region, back_populates="users")
 
     def __str__(self):
         return self.full_name
@@ -146,6 +157,7 @@ class TaskGroup(Base):
     analytics: Mapped[bool] = mapped_column(default=False, unique=False, nullable=False)
     notify: Mapped[bool] = mapped_column(default=False, unique=False, nullable=False)
     close_from_test: Mapped[bool] = mapped_column(default=False, unique=False, nullable=False)
+    assign_executor: Mapped[bool] = mapped_column(default=False, unique=False, nullable=False)
 
     # relationships
     stages: Mapped[list["Stage"]] = relationship(back_populates="group", cascade="all, delete-orphan")
@@ -154,6 +166,7 @@ class TaskGroup(Base):
     users_group_roles: Mapped[list["UserGroupRules"]] = relationship(
         "UserGroupRules", back_populates="group", uselist=True
     )
+    users: Mapped[list["User"]] = relationship(back_populates="group")
 
     def __str__(self):
         return self.title
@@ -312,6 +325,7 @@ class Region(Base):
     # relationships
     task_group: Mapped["TaskGroup"] = relationship(lazy="joined")
     tasks: Mapped[list["Task"]] = relationship(back_populates="region", lazy="joined")
+    users: Mapped[list["User"]] = relationship(secondary=user_region, back_populates="regions")
 
 
     def __str__(self):

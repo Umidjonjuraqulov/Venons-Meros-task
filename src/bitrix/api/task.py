@@ -25,12 +25,14 @@ class Task(Bitrix):
 
     async def create_task(
             self, title, description, files: list[int], group_id: str,
-            auditors: list[int] = None, creator_id: int = None, deadline: datetime = None
+            auditors: list[int] = None, creator_id: int = None,
+            executor_id: int = None, deadline: datetime = None
     ) -> dict | None:
         created_by = creator_id if creator_id else self.conf.data.current_id
+
         fields = {
             "CREATED_BY": created_by,
-            "RESPONSIBLE_ID": self.conf.data.current_id,
+            "RESPONSIBLE_ID": executor_id if executor_id else self.conf.data.current_id,
             "GROUP_ID": group_id,
             "TITLE": title,
             "DESCRIPTION": description,

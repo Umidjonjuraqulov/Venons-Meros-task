@@ -27,7 +27,8 @@ async def create_task(
         title: str, description: str,
         files: list[str],  # [tg_file_id, file_name, file_type]
         user_tg_id: int, group: str, region: str | None,
-        deadline: datetime = None
+        deadline: datetime = None,
+        executor_id: int = None
 ) -> bool:
     try:
         # Get info task_group_db, task_user_db
@@ -37,12 +38,14 @@ async def create_task(
         task_region_db = task_region_db[0] if task_region_db else None
         task_user_db = await conf.bitrix_db.get_user(tg_id=user_tg_id)
         task_user_db = task_user_db[0]
+        executor_user_db = await conf.bitrix_db.get_user(id_=executor_id)
+        executor_user_db = executor_user_db[0] if executor_user_db else None
         if conf.debug:
             current_user_db = task_user_db
         else:
             current_user_db = await conf.bitrix_db.get_user(bit_id=conf.bitrix.conf.data.current_id)
             current_user_db = current_user_db[0]
-
+        executor_user_db = current_user_db if not executor_user_db else executor_user_db
         """used for the role of performer"""
 
         # Take a place in the database to get Task id
@@ -54,7 +57,7 @@ async def create_task(
 
         # Link users in task_users.
         await conf.bitrix_db.add_task_user(user_id=task_user_db.id, task_id=task_in_db.id, role=TaskRole.CREATOR)
-        await conf.bitrix_db.add_task_user(user_id=current_user_db.id, task_id=task_in_db.id, role=TaskRole.EXECUTOR)
+        await conf.bitrix_db.add_task_user(user_id=executor_user_db.id, task_id=task_in_db.id, role=TaskRole.EXECUTOR)
 
         tg_id_observers = set()
         bit_id_observers = set()
@@ -111,7 +114,9 @@ async def create_task(
             title=f"{title} | {region}" if region else title,
             description=description_title + description,
             deadline=deadline, files=bitrix_files,
-            group_id=task_group_db.bit_group_id, creator_id=task_user_db.bit_user_id, auditors=list(bit_id_observers)
+            group_id=task_group_db.bit_group_id, creator_id=task_user_db.bit_user_id,
+            executor_id=executor_user_db.bit_user_id if executor_user_db else None,
+            auditors=list(bit_id_observers)
         )
 
         if not task:  # delete if task can not create
@@ -425,6 +430,22 @@ async def to_create_task(message: Message, state: FSMContext, language: str) -> 
     await state.set_data({"groups": groups})
     await state.set_state(User.create_task_group)
     await message.answer(_("choose_group", language), reply_markup=build_rkb(groups, language))
+
+
+async def to_create_task_executor(message: Message, state: FSMContext, language: str) -> None:
+    data = await state.get_data()
+    group_title = data.get("group")
+    region_title = data.get("region")
+    db_users = await conf.bitrix_db.get_users_by_region_and_group(group_title=group_title, region_title=region_title)
+    users = []
+    users_id_by_index = {}
+    for index, user in enumerate(db_users, start=1):
+        if user.bit_user_id:
+            users.append(f"{index}. {user.full_name.strip()}")
+            users_id_by_index[index] = user.id
+    await state.update_data({"users": users, "users_id_by_index": users_id_by_index})
+    await state.set_state(User.create_task_executor)
+    await message.answer(_("task.choose_executor", language), reply_markup=build_rkb(users, language))
 
 
 async def to_group_status(message: Message, state: FSMContext, language: str) -> None:

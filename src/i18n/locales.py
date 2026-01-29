@@ -63,6 +63,7 @@ translations = {
         "task.title": "📋 Введите название задачи",
         "task.title_not": "❗️Отправьте название задачи до 128 символов",
         "task.choose_region": "🌍 Выберите регион",
+        "task.choose_executor": "🧑🏻‍💻 Выберите исполнителя",
         "task.description": "✍️ Введите описание задачи",
         "task.file": "📁 Отправьте файл(ы) задачи",
         "task.file_get": "✅️Файл получен. Можете загрузить ещё или продолжить.",
@@ -127,7 +128,8 @@ translations = {
 
         "task.title": "📋 Vazifa/Taklif nomini kiriting",
         "task.title_not": "❗️Vazifa/Taklif nomini 128 ta belgidan oshmagan holda yuboring",
-        "task.choose_region": "🌍 Regionni tanlang",
+        "task.choose_region": "🌍 Hududni tanlang",
+        "task.choose_executor": "🧑🏻‍💻 Ijrochini tanlang",
         "task.description": "📝 Vazifa/Taklifni batafsil tasvirlab bering\n\n"
                             "❗ Qanday muammolarni ko‘ryapsiz?\n"
                             "💡 Ularni hal qilish bo‘yicha qanday yechimlaringiz bor?",

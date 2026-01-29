@@ -60,7 +60,7 @@ class UserAdmin(ModelView, model=User):
     ]
     form_columns = [
         User.full_name, User.phone, User.job_title, User.tg_id, User.bit_user_id, User.access_level, User.role,
-        User.max_active_tasks, User.ban_time
+        User.max_active_tasks, User.ban_time, User.group, User.regions
     ]
 
     form_overrides = {"access_level": SelectField, "bit_user_id": SelectField, "language": SelectField}
@@ -225,7 +225,7 @@ class TaskGroupAdmin(ModelView, model=TaskGroup):
         TaskGroup.max_tasks, TaskGroup.max_user_tasks, TaskGroup.max_executor_task, TaskGroup.max_active_tasks,
         TaskGroup.auto_acceptance, TaskGroup.ban_hours,
         # TaskGroup.bit_group_id, TaskGroup.bit_folder_id,
-        TaskGroup.fifo_queue, TaskGroup.notify, TaskGroup.analytics, TaskGroup.close_from_test
+        TaskGroup.fifo_queue, TaskGroup.notify, TaskGroup.analytics, TaskGroup.close_from_test, TaskGroup.assign_executor
     ]
 
     async def on_model_change(self, data, model, is_created, request):
@@ -651,4 +651,4 @@ class RegionAdmin(ModelView, model=Region):
 
     column_list = [Region.id, Region.name, Region.task_group]
     column_details_list = [Region.id, Region.name, Region.tasks]
-    form_columns = [Region.name, Region.task_group]
+    form_columns = [Region.name, Region.task_group, Region.users]

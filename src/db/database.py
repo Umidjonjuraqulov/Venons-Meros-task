@@ -431,6 +431,19 @@ class BitrixDB:
             except Exception as e:
                 print(e)  # LOG
 
+    async def get_users_by_region_and_group(self, group_title: str, region_title: str = None) -> list[User]:
+        async with self.session_factory() as session:
+            query = select(User).join(User.regions)
+            if region_title:
+                query = query.where(Region.name == region_title, Region.task_group.has(title=group_title))
+            if group_title:
+                query = query.filter(TaskGroup.title == group_title)
+            try:
+                result = await session.execute(query)
+                return result.scalars().unique().all()
+            except Exception as e:
+                print(e)  # LOG
+
     async def add_task_stage(self, group_id: int, bit_stage_id: int, bit_sort: int, title: str) -> Optional[Stage]:
         async with self.session_factory() as session:
             stage = Stage(
