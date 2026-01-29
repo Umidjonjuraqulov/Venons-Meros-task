@@ -60,7 +60,7 @@ class UserAdmin(ModelView, model=User):
     ]
     form_columns = [
         User.full_name, User.phone, User.job_title, User.tg_id, User.bit_user_id, User.access_level, User.role,
-        User.max_active_tasks, User.ban_time, User.group, User.regions
+        User.max_active_tasks, User.ban_time, User.group
     ]
 
     form_overrides = {"access_level": SelectField, "bit_user_id": SelectField, "language": SelectField}
