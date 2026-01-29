@@ -651,4 +651,11 @@ class RegionAdmin(ModelView, model=Region):
 
     column_list = [Region.id, Region.name, Region.task_group]
     column_details_list = [Region.id, Region.name, Region.tasks]
-    form_columns = [Region.name, Region.task_group, Region.users]
+    form_columns = [Region.name, Region.task_group, "users"]
+
+    form_ajax_refs = {
+        "users": {
+            "fields": ("full_name",),  # column(s) on User
+            "order_by": "full_name",
+        }
+    }
