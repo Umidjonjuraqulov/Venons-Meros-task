@@ -9,9 +9,13 @@ from aiogram.types import Update
 from src.db.models import Task
 
 from src.configuration import conf
+from .task_report_api import fastapi_router as task_report_router
 
 
 fastapi_router = APIRouter()
+
+# include sub-routers so their endpoints appear in the app's OpenAPI schema
+fastapi_router.include_router(task_report_router)
 
 in_checking: dict[str, list] = {"ONTASKUPDATE": [], "ONTASKDELE": [], "ONTASKCOMMENTADD": []}
 

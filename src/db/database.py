@@ -538,6 +538,39 @@ class BitrixDB:
                 print(e)  # LOG
                 return []
 
+    async def get_tasks_for_report(
+            self, user_id: Optional[int] = None, group_id: Optional[int] = None, stage_title: Optional[str] = None,
+            created_from_dt: Optional[datetime] = None, created_to_dt: Optional[datetime] = None,
+            executor_id: Optional[int] = None, creator_id: Optional[int] = None
+    ) -> Sequence[Task]:
+
+        async with self.session_factory() as session:
+            query = select(Task).join(Task.task_users)
+
+            if executor_id:
+                query = query.where(and_(TaskUser.user_id == executor_id, TaskUser.role == TaskRole.EXECUTOR))
+
+            if group_id:
+                query = query.where(Task.group_id == group_id)
+
+            if stage_title:
+                query = query.where(Task.stage.has(title=stage_title))
+
+            if created_from_dt:
+                query = query.where(Task.created_date >= created_from_dt)
+            if created_to_dt:
+                query = query.where(Task.created_date <= created_to_dt)
+
+            query = query.order_by(Task.created_date.desc())
+
+            try:
+                result = await session.execute(query)
+                tasks = result.scalars().unique().all()
+                return tasks
+            except Exception as e:
+                print(e)  # LOG
+                return []
+
     async def add_task(self, task: Task) -> Optional[Task]:
         async with self.session_factory() as session:
             try:
