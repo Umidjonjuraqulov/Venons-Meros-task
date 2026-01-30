@@ -437,11 +437,11 @@ async def to_create_task_executor(message: Message, state: FSMContext, language:
     group_title = data.get("group")
     region_title = data.get("region")
     group: TaskGroup = await conf.bitrix_db.get_group_by_title(group_title)
-    if not group.assign_executor:
+    db_users = await conf.bitrix_db.get_users_by_region_and_group(group_title=group_title, region_title=region_title)
+    if not group.assign_executor or not db_users:
         await state.set_state(User.create_task_title)
         await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
     else:
-        db_users = await conf.bitrix_db.get_users_by_region_and_group(group_title=group_title, region_title=region_title)
         users = []
         users_id_by_index = {}
         for index, user in enumerate(db_users, start=1):

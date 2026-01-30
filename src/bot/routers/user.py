@@ -133,10 +133,10 @@ async def user_create_task_region(message: Message, state: FSMContext, language:
 
 @user_router.message(User.create_task_executor)
 async def user_create_task_executor(message: Message, state: FSMContext, language: str):
+    data = await state.get_data()
     if message.text == _("b.back", language):
         await to_user_main_menu(message, state, language)
-    data = await state.get_data()
-    if message.text in data["users"]:
+    elif message.text in data["users"]:
         index, name = message.text.split(". ", maxsplit=1)
         users_id_by_index: dict = data["users_id_by_index"]
         executor_db_id = users_id_by_index.get(int(index))
@@ -150,7 +150,7 @@ async def user_create_task_executor(message: Message, state: FSMContext, languag
 @user_router.message(User.create_task_title)
 async def user_create_task_title(message: Message, state: FSMContext, language: str):
     if message.text == _("b.back", language):
-        await to_create_task_executor(message, state, language)
+        await to_user_main_menu(message, state, language)
 
     elif message.text == _("b.cancel", language):
         await to_user_main_menu(message, state, language)

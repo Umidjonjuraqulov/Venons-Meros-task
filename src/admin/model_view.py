@@ -209,7 +209,8 @@ class TaskGroupAdmin(ModelView, model=TaskGroup):
         TaskGroup.notify: "Уведомление FIFO",
         TaskGroup.fifo_queue: "FIFO",
         TaskGroup.analytics: "Аналитика",
-        TaskGroup.close_from_test: "Завершить с теста"
+        TaskGroup.close_from_test: "Завершить с теста",
+        TaskGroup.assign_executor: "Назначать исполнителя"
     }
 
     column_list = [TaskGroup.id, TaskGroup.title, TaskGroup.max_tasks, TaskGroup.bit_group_id]
