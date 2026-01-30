@@ -436,16 +436,21 @@ async def to_create_task_executor(message: Message, state: FSMContext, language:
     data = await state.get_data()
     group_title = data.get("group")
     region_title = data.get("region")
-    db_users = await conf.bitrix_db.get_users_by_region_and_group(group_title=group_title, region_title=region_title)
-    users = []
-    users_id_by_index = {}
-    for index, user in enumerate(db_users, start=1):
-        if user.bit_user_id:
-            users.append(f"{index}. {user.full_name.strip()}")
-            users_id_by_index[index] = user.id
-    await state.update_data({"users": users, "users_id_by_index": users_id_by_index})
-    await state.set_state(User.create_task_executor)
-    await message.answer(_("task.choose_executor", language), reply_markup=build_rkb(users, language))
+    group: TaskGroup = await conf.bitrix_db.get_group_by_title(group_title)
+    if not group.assign_executor:
+        await state.set_state(User.create_task_title)
+        await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+    else:
+        db_users = await conf.bitrix_db.get_users_by_region_and_group(group_title=group_title, region_title=region_title)
+        users = []
+        users_id_by_index = {}
+        for index, user in enumerate(db_users, start=1):
+            if user.bit_user_id:
+                users.append(f"{index}. {user.full_name.strip()}")
+                users_id_by_index[index] = user.id
+        await state.update_data({"users": users, "users_id_by_index": users_id_by_index})
+        await state.set_state(User.create_task_executor)
+        await message.answer(_("task.choose_executor", language), reply_markup=build_rkb(users, language))
 
 
 async def to_group_status(message: Message, state: FSMContext, language: str) -> None:

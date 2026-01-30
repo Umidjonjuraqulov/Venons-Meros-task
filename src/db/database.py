@@ -444,6 +444,15 @@ class BitrixDB:
             except Exception as e:
                 print(e)  # LOG
 
+    async def get_group_by_title(self, title: str) -> TaskGroup | None:
+        async with self.session_factory() as session:
+            query = select(TaskGroup).filter(TaskGroup.title == title)
+            try:
+                result = await session.execute(query)
+                return result.scalars().unique().one_or_none()
+            except Exception as e:
+                print(e)  # LOG
+
     async def add_task_stage(self, group_id: int, bit_stage_id: int, bit_sort: int, title: str) -> Optional[Stage]:
         async with self.session_factory() as session:
             stage = Stage(
