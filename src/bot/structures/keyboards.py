@@ -184,7 +184,7 @@ def task_info_rkb(language: str, can_delete: bool = False) -> ReplyKeyboardMarku
         return ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text=_("b.get_files", language)), KeyboardButton(text=_("b.comments", language))],
-                [KeyboardButton(text=_("b.change_stage", language)), KeyboardButton(text=_("b.delete_task", language))],
+                [KeyboardButton(text=_("b.change_stage", language))],
                 [KeyboardButton(text=_("b.back", language))]
             ],
             resize_keyboard=True
