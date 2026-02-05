@@ -39,7 +39,7 @@ async def create_task(
         task_user_db = await conf.bitrix_db.get_user(tg_id=user_tg_id)
         task_user_db = task_user_db[0]
         executor_user_db = await conf.bitrix_db.get_user(id_=executor_id)
-        executor_user_db = executor_user_db[0] if executor_user_db else None
+        executor_user_db = executor_user_db[0] if executor_user_db and executor_id else None
         if conf.debug:
             current_user_db = task_user_db
         else:
