@@ -26,7 +26,8 @@ class Task(Bitrix):
     async def create_task(
             self, title, description, files: list[int], group_id: str,
             auditors: list[int] = None, creator_id: int = None,
-            executor_id: int = None, deadline: datetime = None
+            executor_id: int = None, deadline: datetime = None,
+            stage_id: int = None
     ) -> dict | None:
         created_by = creator_id if creator_id else self.conf.data.current_id
 
@@ -36,7 +37,8 @@ class Task(Bitrix):
             "GROUP_ID": group_id,
             "TITLE": title,
             "DESCRIPTION": description,
-            "UF_TASK_WEBDAV_FILES": [f"n{file_id}" for file_id in files]
+            "UF_TASK_WEBDAV_FILES": [f"n{file_id}" for file_id in files],
+            "STAGE_ID": stage_id
         }
 
         if deadline:
