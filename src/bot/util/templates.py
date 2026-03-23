@@ -47,13 +47,11 @@ async def create_task(
             current_user_db = current_user_db[0]
         executor_user_db = current_user_db if not executor_user_db else executor_user_db
         """used for the role of performer"""
-        stages = await conf.bitrix_db.get_task_stage(group_id=task_group_db.id)
 
         # Take a place in the database to get Task id
         task_in_db = Task(
             title=title, description=description, created_date=datetime.now(),
-            deadline=deadline, group_id=task_group_db.id, region_id=task_region_db.id if task_region_db else None,
-            stage_id=stages[0].id
+            deadline=deadline, group_id=task_group_db.id, region_id=task_region_db.id if task_region_db else None
         )
         task_in_db = await conf.bitrix_db.add_task(task_in_db)
 
