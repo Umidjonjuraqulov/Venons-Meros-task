@@ -142,6 +142,7 @@ async def create_task(
         if tg_id_observers:
             msg = TaskNFY.CREATED_TASK.format(
                 name=task_user_db.full_name, task_name=task_in_db.title.translate(change_tag),
+                created_date=task_in_db.created_date.strftime("%d.%m.%Y %H:%M"),
                 description=task_in_db.description[0:2048].translate(change_tag)
             )
             await conf.notify_manager.notify(msg=msg, tg_ids=tg_id_observers)
@@ -253,6 +254,7 @@ def format_task_comments(
     title = TaskNFY.TASK.format(
         bit_id=task_info.bit_id,
         task_name=task_info.title.translate(change_tag),
+    created_date=task_info.create_date.strftime("%d.%m.%Y %H:%M") if task_info.create_date else DONT_CHOOSE_ANS,
         creator=task_info.creator,
         developer=task_info.developer,
         manager=task_info.manager or DONT_CHOOSE_ANS,
@@ -380,6 +382,7 @@ async def write_comment(
         notify = TaskNFY.TASK.format(
             bit_id=task.bit_task_id,
             task_name=task.title.translate(change_tag),
+            created_date=task.created_date.strftime("%d.%m.%Y %H:%M") if task.created_date else DONT_CHOOSE_ANS,
             creator=task_users_name.get("creator"),
             developer=task_users_name.get("developer"),
             manager=task_users_name.get("manager"),

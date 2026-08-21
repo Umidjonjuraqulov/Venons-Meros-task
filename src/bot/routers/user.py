@@ -309,6 +309,7 @@ async def user_my_tasks(message: Message, state: FSMContext, language: str):
             msg = MyTaskANS.TASK_INFO.format(
                 bit_id=task_info.bit_id, task_name=task_info.title.translate(change_tag),
                 description=task_info.description[0:2048].translate(change_tag),
+                created_date=task_info.create_date.strftime("%d.%m.%Y %H:%M") if task_info.create_date else DONT_CHOOSE_ANS,
                 creator=task_info.creator, developer=task_info.developer, manager=task_info.manager,
                 observers=MyTaskANS.OBSERVERS_JOIN.join(task_info.observers or []),
                 group=task_info.group, region=task_info.region, stage=task_info.stage

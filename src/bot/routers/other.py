@@ -140,6 +140,7 @@ async def format_task_info(task_db_id: int) -> dict:
     msg = MyTaskANS.TASK_INFO.format(
         bit_id=task.bit_id,
         task_name=task.title.translate(change_tag), description=task.description[0:2048].translate(change_tag),
+        created_date=task.create_date.strftime("%d.%m.%Y %H:%M") if task.create_date else DONT_CHOOSE_ANS,
         creator=task.creator, developer=task.developer, manager=task.manager,
         observers=MyTaskANS.OBSERVERS_JOIN.join(task.observers or []),
         group=task.group, region=task.region, stage=task.stage

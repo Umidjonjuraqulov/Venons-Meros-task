@@ -38,6 +38,7 @@ class MyTaskANS:
     TASK_INFO = """📋#Задача_{bit_id}: <b>{task_name}</b>
 📒Описание: {description}
 ----------------------------------------
+🗓 Дата создания: <b>{created_date}</b>
 👤 Заказчик: <b>{creator}</b>
 👨🏻‍💻 Исполнитель: <b>{developer}</b>
 👨‍💼 Менеджер: <b>{manager}</b>
@@ -57,6 +58,7 @@ class MyTaskANS:
 class TaskNFY:
     TASK = """📋#Задача_{bit_id}: <b>{task_name}</b>
 ----------------------------------------
+🗓 Дата создания: <b>{created_date}</b>
 👤 Заказчик: <b>{creator}</b>
 👨🏻‍💻 Исполнитель: <b>{developer}</b>
 👨‍💼 Менеджер: <b>{manager}</b>
@@ -72,7 +74,10 @@ class TaskNFY:
 """
 
     NEW_TASK = "🆕 Создано новая задача с Bitrix"
-    CREATED_TASK = "👤<b>{name}</b>\n📖Создал задачу: <b>{task_name}</b>\n📒Описание: {description}"
+    CREATED_TASK = (
+        "👤<b>{name}</b>\n📖Создал задачу: <b>{task_name}</b>\n"
+        "🗓 Дата создания: <b>{created_date}</b>\n📒Описание: {description}"
+    )
     CHANGE_GROUP = "🏢 Подразделение: <b>{from_} ➡️ {to}</b>"
     TASK_RESPONSIBLE = "👨🏻‍💻<b>{name}</b> назначен исполнителем\n"
     ADD_AUDITOR = "🕵️‍♂️<b>{name}</b> назначен наблюдателем\n"

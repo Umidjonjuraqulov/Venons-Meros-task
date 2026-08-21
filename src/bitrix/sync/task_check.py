@@ -94,6 +94,7 @@ class TaskSync(BaseBitSync):
                 notify = TaskNFY.TASK.format(
                     bit_id=task.bit_task_id,
                     task_name=task.title.translate(change_tag),
+                    created_date=task.created_date.strftime("%d.%m.%Y %H:%M") if task.created_date else DONT_CHOOSE_ANS,
                     creator=roles.creator.user.full_name if roles.creator else DONT_CHOOSE_ANS,
                     developer=roles.executor.user.full_name if roles.executor else DONT_CHOOSE_ANS,
                     manager=roles.manager.user.full_name if roles.manager else DONT_CHOOSE_ANS,
@@ -303,6 +304,7 @@ class TaskSync(BaseBitSync):
         notify = TaskNFY.TASK.format(
             bit_id=task_in_db[0].bit_task_id,
             task_name=task_in_db[0].title.translate(change_tag),
+            created_date=task_in_db[0].created_date.strftime("%d.%m.%Y %H:%M") if task_in_db[0].created_date else DONT_CHOOSE_ANS,
             creator=task_users_name.get("creator"),
             developer=task_users_name.get("developer"),
             manager=task_users_name.get("manager"),
