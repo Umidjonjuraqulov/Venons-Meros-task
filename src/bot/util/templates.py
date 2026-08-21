@@ -223,6 +223,7 @@ def format_task_list(tasks: dict[int, TaskInfo], page: int, lines: int = 10) -> 
     for index, info in list(tasks.items())[lines*page-lines:lines*page]:
         result += MyTaskANS.LIST_INFO.format(
             id=index, name=f"№{info.bit_id} - {info.title[:50].translate(change_tag)}",
+            created_date=info.create_date.strftime("%d.%m.%Y %H:%M") if info.create_date else DONT_CHOOSE_ANS,
             creator=info.creator, developer=info.developer, stage=info.stage
         )
 
@@ -254,7 +255,7 @@ def format_task_comments(
     title = TaskNFY.TASK.format(
         bit_id=task_info.bit_id,
         task_name=task_info.title.translate(change_tag),
-    created_date=task_info.create_date.strftime("%d.%m.%Y %H:%M") if task_info.create_date else DONT_CHOOSE_ANS,
+        created_date=task_info.create_date.strftime("%d.%m.%Y %H:%M") if task_info.create_date else DONT_CHOOSE_ANS,
         creator=task_info.creator,
         developer=task_info.developer,
         manager=task_info.manager or DONT_CHOOSE_ANS,

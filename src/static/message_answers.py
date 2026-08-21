@@ -49,6 +49,7 @@ class MyTaskANS:
 """
     LIST_INFO = """--------------- <b>{id}</b> ---------------
 📋 {name}
+🗓 Создана: <b>{created_date}</b>
 👤 Заказчик: <b>{creator}</b>
 👨🏻‍💻 Исполнитель: <b>{developer}</b>
 🎯 Статус: {stage}\n\n"""
