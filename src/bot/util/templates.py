@@ -433,7 +433,8 @@ async def to_registration(tg_id: int | str, state: FSMContext) -> None:
 
 
 async def to_create_task(message: Message, state: FSMContext, language: str) -> None:
-    groups = await conf.bitrix_db.select_info(TaskGroup.title)
+    visible_groups = await conf.bitrix_db.get_task_group(visible=True)
+    groups = [group.title for group in visible_groups]
     await state.set_data({"groups": groups})
     await state.set_state(User.create_task_group)
     await message.answer(_("choose_group", language), reply_markup=build_rkb(groups, language))

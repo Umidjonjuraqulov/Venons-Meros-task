@@ -370,7 +370,7 @@ class BitrixDB:
 
     async def get_task_group(
             self, id_: int = None, bit_group_id: int = None, title: str = None,
-            notify: bool = None, analytics: bool = None
+            notify: bool = None, analytics: bool = None, visible: bool = None
     ) -> Sequence[TaskGroup] | None:
         async with self.session_factory() as session:
             query = select(TaskGroup)
@@ -387,6 +387,9 @@ class BitrixDB:
 
             if isinstance(analytics, bool):
                 query = query.filter(TaskGroup.analytics.is_(analytics))
+
+            if isinstance(visible, bool):
+                query = query.filter(TaskGroup.visible.is_(visible))
 
             try:
                 result = await session.execute(query)

@@ -147,6 +147,7 @@ class TaskGroup(Base):
     bit_group_id: Mapped[int] = mapped_column(sa.Integer, unique=True, nullable=False)
     bit_folder_id: Mapped[int] = mapped_column(sa.Integer, unique=True, nullable=False)
     title: Mapped[str] = mapped_column(sa.String, unique=False, nullable=False)
+    visible: Mapped[bool] = mapped_column(default=False, unique=False, nullable=False)
     max_tasks: Mapped[int] = mapped_column(sa.Integer, unique=False, nullable=True)
     max_user_tasks: Mapped[int] = mapped_column(sa.Integer, unique=False, nullable=True)
     max_executor_task: Mapped[int] = mapped_column(sa.Integer, unique=False, nullable=True)

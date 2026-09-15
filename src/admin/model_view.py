@@ -198,6 +198,7 @@ class TaskGroupAdmin(ModelView, model=TaskGroup):
 
     column_labels = {
         TaskGroup.title: "Название",
+        TaskGroup.visible: "Видна в боте",
         TaskGroup.bit_group_id: "Bitrix ID",
         TaskGroup.bit_folder_id: "ID Папки проекта",
         TaskGroup.max_tasks: "Задач в очереди",
@@ -213,16 +214,16 @@ class TaskGroupAdmin(ModelView, model=TaskGroup):
         TaskGroup.assign_executor: "Назначать исполнителя"
     }
 
-    column_list = [TaskGroup.id, TaskGroup.title, TaskGroup.max_tasks, TaskGroup.bit_group_id]
+    column_list = [TaskGroup.id, TaskGroup.title, TaskGroup.visible, TaskGroup.max_tasks, TaskGroup.bit_group_id]
     column_details_list = [
-        TaskGroup.id, TaskGroup.title,
+        TaskGroup.id, TaskGroup.title, TaskGroup.visible,
         TaskGroup.max_tasks, TaskGroup.max_user_tasks, TaskGroup.max_executor_task, TaskGroup.max_active_tasks,
         TaskGroup.auto_acceptance, TaskGroup.ban_hours,
         TaskGroup.bit_group_id, TaskGroup.bit_folder_id,
         TaskGroup.fifo_queue, TaskGroup.notify, TaskGroup.analytics, TaskGroup.close_from_test
     ]
     form_columns = [
-        TaskGroup.title,
+        TaskGroup.title, TaskGroup.visible,
         TaskGroup.max_tasks, TaskGroup.max_user_tasks, TaskGroup.max_executor_task, TaskGroup.max_active_tasks,
         TaskGroup.auto_acceptance, TaskGroup.ban_hours,
         # TaskGroup.bit_group_id, TaskGroup.bit_folder_id,
