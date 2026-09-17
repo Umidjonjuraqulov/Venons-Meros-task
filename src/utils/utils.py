@@ -11,6 +11,31 @@ from src.db.models import Stage, Task, User
 from src.i18n.i18n import translate as _
 
 
+def format_phone(phone: str | None) -> str:
+    """Normalise stored phone numbers to a leading "+".
+
+    A number may be entered as text ("998 90 123 45 67"), come from a Telegram
+    contact (with or without "+"), and several numbers may be stored separated
+    by commas, so each one is prefixed individually. Anything that holds no
+    digits is left untouched.
+    """
+    if not phone:
+        return ""
+
+    numbers = []
+    for number in phone.split(","):
+        number = number.strip()
+        if not number:
+            continue
+
+        if not number.startswith("+") and any(ch.isdigit() for ch in number):
+            number = f"+{number}"
+
+        numbers.append(number)
+
+    return ", ".join(numbers)
+
+
 def format_user_with_phone(user: "User | None", default: str = None, link: bool = True) -> str:
     """Name (+ phone) for the "Заказчик" field, linked to the Telegram profile.
 
@@ -27,7 +52,7 @@ def format_user_with_phone(user: "User | None", default: str = None, link: bool 
     if link and user.tg_id:
         name = f'<a href="tg://user?id={user.tg_id}">{name}</a>'
 
-    phone = (user.phone or "").strip()
+    phone = format_phone(user.phone)
     if phone:
         return f"{name} ({escape(phone)})"
 
