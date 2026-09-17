@@ -17,6 +17,7 @@ from src.bitrix.api.bitrix import BitrixAPI
 from src.classes.cls_const import TaskRole, StageType
 from src.db.database import BitrixDB
 from src.db.models import TaskUser, Stage
+from src.utils.utils import format_user_with_phone
 
 
 @dataclass
@@ -99,7 +100,7 @@ class TaskExport:
             creator, executor = "None", "None"
             for task_user in task.task_users:  # type: TaskUser
                 if task_user.role == TaskRole.CREATOR:
-                    creator = task_user.user.full_name
+                    creator = format_user_with_phone(task_user.user, link=False)
                 elif task_user.role == TaskRole.EXECUTOR:
                     executor = task_user.user.full_name
 
@@ -160,7 +161,7 @@ class TaskExport:
             "Исполнитель", "Статус", "Задача", "Заказчик",
             "Срок", "На тестирование", "Создан", "Принят"
         ]
-        columns_width = [30, 20, 40, 30, 16, 16, 16, 16]
+        columns_width = [30, 20, 40, 45, 16, 16, 16, 16]
         ws.append(columns)
         for i, col in enumerate(columns):
             cell = ws.cell(row=1, column=i + 1)
@@ -219,7 +220,7 @@ class TaskExport:
                 task.executor if len(task.executor) < 31 else task.executor[:29] + ".",
                 task.stage if len(task.stage) < 21 else task.stage[:19] + ".",
                 f"{task.task_bit_id} - {task.task_title if len(task.task_title) < 30 else task.task_title[:29] + '.'}",
-                task.creator if len(task.creator) < 31 else task.creator[:29] + ".",
+                task.creator if len(task.creator) < 46 else task.creator[:44] + ".",
                 task.deadline.strftime("%d.%m.%Y %H:%M") if task.deadline else "-",
                 task.test_date.strftime("%d.%m.%Y %H:%M") if task.test_date else "-",
                 task.created.strftime("%d.%m.%Y %H:%M") if task.closed else "-",
@@ -484,7 +485,7 @@ class TaskExport:
             "Последний комментарий", "Дата п. комментария", "Автор п. комментария"
         ]
         columns_width = [
-            8, 40, 30, 30, 30,
+            8, 40, 45, 30, 30,
             20, 20, 20,
             40, 20, 30
         ]
@@ -530,7 +531,7 @@ class TaskExport:
             commet = await self.db.get_comment(task.id)
             row = [
                 task.bit_task_id, task.title,
-                task_users.creator.user.__str__() if task_users.creator else "",
+                format_user_with_phone(task_users.creator.user, link=False) if task_users.creator else "",
                 task_users.manager.user.__str__() if task_users.manager else "",
                 task_users.executor.user.__str__() if task_users.executor else "",
 
@@ -607,7 +608,7 @@ class TaskExport:
         ws = wb.active
         ws.title = "Задачи"
         columns = ["id", "Задача", "Заказчик", "Менеджер", "Дата в очереди"]
-        columns_width = [10, 40, 30, 30, 20]
+        columns_width = [10, 40, 45, 30, 20]
         ws.append(columns)
         for i, col in enumerate(columns):
             cell = ws.cell(row=1, column=i + 1)
@@ -621,7 +622,7 @@ class TaskExport:
         for task in tasks_fifo:
             task_users = self.db.sort_task_roles(task.task_users)
             row = [
-                task.bit_task_id, task.title, task_users.creator.user.full_name,
+                task.bit_task_id, task.title, format_user_with_phone(task_users.creator.user, link=False),
                 task_users.manager.user.full_name if task_users.manager else "",
                 task.queue_date.strftime("%Y.%m.%d %H:%M:%S")
             ]
@@ -645,7 +646,7 @@ class TaskExport:
             row = [
                 id_, task.bit_task_id,
                 task.title if len(task.title) < 60 else task.title[:59] + '.',
-                task_users.creator.user.full_name,
+                format_user_with_phone(task_users.creator.user, link=False),
                 task_users.manager.user.full_name if task_users.manager else "",
                 task.queue_date.strftime("%Y.%m.%d %H:%M:%S")
             ]
@@ -669,7 +670,7 @@ class TaskExport:
             row = [
                 id_, task.bit_task_id,
                 task.title if len(task.title) < 60 else task.title[:59] + '.',
-                task_users.creator.user.full_name,
+                format_user_with_phone(task_users.creator.user, link=False),
                 task_users.manager.user.full_name if task_users.manager else "",
                 task.queue_date.strftime("%Y.%m.%d %H:%M:%S")
             ]

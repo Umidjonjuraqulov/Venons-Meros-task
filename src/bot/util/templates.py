@@ -14,6 +14,7 @@ from src.static.message_answers import (
 
 from src.db.models import Task, File, TaskGroup, TaskUser, Region
 from src.classes.data_classes import TaskInfo
+from src.utils.utils import format_user_with_phone
 from src.classes.cls_const import TaskRole, FileTypeConst, StageType
 
 from src.configuration import conf
@@ -149,7 +150,7 @@ async def create_task(
 
         if without_manager:
             warning_msg = (
-                TaskNFY.WARNING_MANAGER.format(creator=task_user_db.full_name) +
+                TaskNFY.WARNING_MANAGER.format(creator=format_user_with_phone(task_user_db)) +
                 f'\n<a href="{conf.project_url}/admin/department-user/create">Прикрепить к подразделению</a>'
             )
             await conf.bitrix_db.add_task_user(user_id=task_user_db.id, task_id=task_in_db.id, role=TaskRole.MANAGER)
@@ -182,7 +183,9 @@ async def get_tasks_list(tg_id: int, roles: list[str]) -> list[TaskInfo]:
             task_users_role = conf.bitrix_db.sort_task_roles(task_users=task_users)
 
             developer_name = task_users_role.executor.user.full_name if task_users_role.executor else DONT_CHOOSE_ANS
-            creator_name = task_users_role.creator.user.full_name if task_users_role.creator else DONT_CHOOSE_ANS
+            creator_name = format_user_with_phone(
+                task_users_role.creator.user if task_users_role.creator else None, DONT_CHOOSE_ANS
+            )
             manager_name = task_users_role.manager.user.full_name if task_users_role.manager else DONT_CHOOSE_ANS
             observers = [user.user.full_name for user in task_users_role.observers]
 
@@ -367,7 +370,7 @@ async def write_comment(
                 tg_ids.append(task_user.user.tg_id)
 
             if task_user.role == TaskRole.CREATOR:
-                task_users_name["creator"] = task_user.user.full_name
+                task_users_name["creator"] = format_user_with_phone(task_user.user)
             elif task_user.role == TaskRole.EXECUTOR:
                 task_users_name["developer"] = task_user.user.full_name
             elif task_user.role == TaskRole.MANAGER:

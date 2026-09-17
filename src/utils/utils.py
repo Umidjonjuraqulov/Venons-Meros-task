@@ -1,13 +1,37 @@
 import asyncio
+from html import escape
 from typing import Sequence
 from logging import ERROR
 
 from aiogram import Bot
 from aiogram.types import InputMediaDocument, BufferedInputFile
 
-from src.db.models import Stage, Task
+from src.db.models import Stage, Task, User
 
 from src.i18n.i18n import translate as _
+
+
+def format_user_with_phone(user: "User | None", default: str = None, link: bool = True) -> str:
+    """Name (+ phone) for the "Заказчик" field, linked to the Telegram profile.
+
+    Users synced from Bitrix have no phone and no tg_id, so both parts are
+    optional: the phone is appended only when set, and the name is wrapped in a
+    tg://user link only when the user has a tg_id. Only the name is linked;
+    the phone follows outside the anchor. Output is HTML (the bot's default
+    parse mode), so the name and phone are escaped.
+    """
+    if not user:
+        return default if default is not None else ""
+
+    name = escape(user.full_name)
+    if link and user.tg_id:
+        name = f'<a href="tg://user?id={user.tg_id}">{name}</a>'
+
+    phone = (user.phone or "").strip()
+    if phone:
+        return f"{name} ({escape(phone)})"
+
+    return name
 
 
 async def get_file_id(bot: Bot, chat_id: int | str, file: bytes, file_name: str, delete=True) -> str:

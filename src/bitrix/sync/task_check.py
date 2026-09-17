@@ -11,7 +11,7 @@ from .task_update import UpdateTask
 
 from src.db.database import TaskUserRoles
 from src.db.models import File, Task, TaskGroup, User, Stage
-from src.utils.utils import get_file_id, send_documents
+from src.utils.utils import get_file_id, send_documents, format_user_with_phone
 from src.classes.cls_const import TaskRole, FileTypeConst, StageType, UserGroupRole
 from src.classes.models.notfiy_manager import NotifyManager
 from src.static.bit_static import task_comment_filter
@@ -95,7 +95,9 @@ class TaskSync(BaseBitSync):
                     bit_id=task.bit_task_id,
                     task_name=task.title.translate(change_tag),
                     created_date=task.created_date.strftime("%d.%m.%Y %H:%M") if task.created_date else DONT_CHOOSE_ANS,
-                    creator=roles.creator.user.full_name if roles.creator else DONT_CHOOSE_ANS,
+                    creator=format_user_with_phone(
+                        roles.creator.user if roles.creator else None, DONT_CHOOSE_ANS
+                    ),
                     developer=roles.executor.user.full_name if roles.executor else DONT_CHOOSE_ANS,
                     manager=roles.manager.user.full_name if roles.manager else DONT_CHOOSE_ANS,
                     observers=MyTaskANS.OBSERVERS_JOIN.join([task_user.user.full_name for task_user in roles.observers]),
@@ -295,7 +297,7 @@ class TaskSync(BaseBitSync):
                 tg_ids.append(task_user.user.tg_id)
 
             if task_user.role == TaskRole.CREATOR:
-                task_users_name["creator"] = task_user.user.full_name
+                task_users_name["creator"] = format_user_with_phone(task_user.user)
             elif task_user.role == TaskRole.EXECUTOR:
                 task_users_name["developer"] = task_user.user.full_name
             elif task_user.role == TaskRole.OBSERVER:

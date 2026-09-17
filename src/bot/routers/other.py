@@ -12,6 +12,7 @@ from src.bot.util.templates import can_delete
 from src.bot.structures.fsm import User
 
 from src.classes.data_classes import TaskInfo
+from src.utils.utils import format_user_with_phone
 from src.db.models import User as UserModel
 from src.configuration import conf
 
@@ -116,7 +117,9 @@ async def format_task_info(task_db_id: int) -> dict:
     task_users_role = conf.bitrix_db.sort_task_roles(task_users=task_users)
 
     developer_name = task_users_role.executor.user.full_name if task_users_role.executor else DONT_CHOOSE_ANS
-    creator_name = task_users_role.creator.user.full_name if task_users_role.creator else DONT_CHOOSE_ANS
+    creator_name = format_user_with_phone(
+        task_users_role.creator.user if task_users_role.creator else None, DONT_CHOOSE_ANS
+    )
     manager_name = task_users_role.manager.user.full_name if task_users_role.manager else DONT_CHOOSE_ANS
     observers = [user.user.full_name for user in task_users_role.observers]
 
