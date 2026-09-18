@@ -7,15 +7,18 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, BufferedInputFile, ReplyKeyboardMarkup
 
 from src.bot.structures.fsm import User, Registration
-from src.bot.structures.keyboards import user_main_rkb, build_rkb, back_and_cancel_rkb, comment_answer_ikb, choose_language
+from src.bot.structures.keyboards import (
+    user_main_rkb, build_rkb, back_and_cancel_rkb, comment_answer_ikb, choose_language, custom_field_rkb,
+    task_file_rkb
+)
 from src.static.message_answers import (
-    TaskNFY, MyTaskANS, DONT_CHOOSE_ANS, MANAGER_TEXT, change_tag
+    TaskNFY, MyTaskANS, DONT_CHOOSE_ANS, change_tag
 )
 
-from src.db.models import Task, File, TaskGroup, TaskUser, Region
+from src.db.models import Task, File, TaskGroup, TaskUser, Region, CustomField
 from src.classes.data_classes import TaskInfo
-from src.utils.utils import format_user_with_phone
-from src.classes.cls_const import TaskRole, FileTypeConst, StageType
+from src.utils.utils import format_user_with_phone, format_custom_values, build_bitrix_description
+from src.classes.cls_const import TaskRole, FileTypeConst, StageType, CustomFieldType, CustomFieldStage
 
 from src.configuration import conf
 
@@ -29,8 +32,10 @@ async def create_task(
         files: list[str],  # [tg_file_id, file_name, file_type]
         user_tg_id: int, group: str, region: str | None,
         deadline: datetime = None,
-        executor_id: int = None
+        executor_id: int = None,
+        custom_values: list[dict] = None
 ) -> bool:
+    """custom_values: [{"field_id", "field_title", "value", "sort"}, ...] — see collect_custom_values"""
     try:
         # Get info task_group_db, task_user_db
         task_group_db = await conf.bitrix_db.get_task_group(title=group)
@@ -57,6 +62,13 @@ async def create_task(
             stage_id=stages[0].id
         )
         task_in_db = await conf.bitrix_db.add_task(task_in_db)
+
+        # Save the answers to the group's custom fields.
+        custom_values_db = []
+        if custom_values:
+            custom_values_db = await conf.bitrix_db.add_task_custom_values(
+                task_id=task_in_db.id, values=custom_values
+            )
 
         # Link users in task_users.
         await conf.bitrix_db.add_task_user(user_id=task_user_db.id, task_id=task_in_db.id, role=TaskRole.CREATOR)
@@ -111,11 +123,10 @@ async def create_task(
                 )
 
         # Create a new task in Bitrix.
-        description_title = f"{MANAGER_TEXT}{manager.full_name}\n"
-
+        # Bitrix renders BBCode, so the custom fields go in as plain "label: value" lines.
         task = await conf.bitrix.create_task(
             title=f"{title} | {region}" if region else title,
-            description=description_title + description,
+            description=build_bitrix_description(manager.full_name, description, custom_values_db),
             deadline=deadline, files=bitrix_files,
             group_id=task_group_db.bit_group_id, creator_id=task_user_db.bit_user_id,
             executor_id=executor_user_db.bit_user_id if executor_user_db else None,
@@ -144,6 +155,7 @@ async def create_task(
             msg = TaskNFY.CREATED_TASK.format(
                 name=task_user_db.full_name, task_name=task_in_db.title.translate(change_tag),
                 created_date=task_in_db.created_date.strftime("%d.%m.%Y %H:%M"),
+                custom_fields=format_custom_values(custom_values_db),
                 description=task_in_db.description[0:2048].translate(change_tag)
             )
             await conf.notify_manager.notify(msg=msg, tg_ids=tg_id_observers)
@@ -179,6 +191,7 @@ async def get_tasks_list(tg_id: int, roles: list[str]) -> list[TaskInfo]:
                 continue
 
             include.add(task_user.task.id)
+            custom_fields = format_custom_values(task_user.task.custom_values)
             task_users = await conf.bitrix_db.get_task_user(task_id=task_user.task.id)
             task_users_role = conf.bitrix_db.sort_task_roles(task_users=task_users)
 
@@ -206,7 +219,8 @@ async def get_tasks_list(tg_id: int, roles: list[str]) -> list[TaskInfo]:
                     developer=developer_name,
                     manager=manager_name,
                     observers=observers,
-                    can_delete=can_delete(task_user.task)
+                    can_delete=can_delete(task_user.task),
+                    custom_fields=custom_fields
                 )
             )
 
@@ -258,6 +272,7 @@ def format_task_comments(
     title = TaskNFY.TASK.format(
         bit_id=task_info.bit_id,
         task_name=task_info.title.translate(change_tag),
+        custom_fields=task_info.custom_fields,
         created_date=task_info.create_date.strftime("%d.%m.%Y %H:%M") if task_info.create_date else DONT_CHOOSE_ANS,
         creator=task_info.creator,
         developer=task_info.developer,
@@ -386,6 +401,7 @@ async def write_comment(
         notify = TaskNFY.TASK.format(
             bit_id=task.bit_task_id,
             task_name=task.title.translate(change_tag),
+            custom_fields=format_custom_values(task.custom_values),
             created_date=task.created_date.strftime("%d.%m.%Y %H:%M") if task.created_date else DONT_CHOOSE_ANS,
             creator=task_users_name.get("creator"),
             developer=task_users_name.get("developer"),
@@ -443,6 +459,32 @@ async def to_create_task(message: Message, state: FSMContext, language: str) -> 
     await message.answer(_("choose_group", language), reply_markup=build_rkb(groups, language))
 
 
+async def to_create_task_title(message: Message, state: FSMContext, language: str) -> None:
+    """Ask the group's "before title" custom fields, then the task title."""
+    if await ask_custom_fields(message, state, language, CustomFieldStage.BEFORE_TITLE):
+        return
+
+    await ask_task_title(message, state, language)
+
+
+async def ask_task_title(message: Message, state: FSMContext, language: str) -> None:
+    await state.set_state(User.create_task_title)
+    await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+
+
+async def to_create_task_files(message: Message, state: FSMContext, language: str) -> None:
+    """Ask the group's "after description" custom fields, then the task files."""
+    if await ask_custom_fields(message, state, language, CustomFieldStage.AFTER_DESCRIPTION):
+        return
+
+    await ask_task_files(message, state, language)
+
+
+async def ask_task_files(message: Message, state: FSMContext, language: str) -> None:
+    await state.set_state(User.create_task_files)
+    await message.answer(_("task.file", language), reply_markup=task_file_rkb(language))
+
+
 async def to_create_task_executor(message: Message, state: FSMContext, language: str) -> None:
     data = await state.get_data()
     group_title = data.get("group")
@@ -450,8 +492,7 @@ async def to_create_task_executor(message: Message, state: FSMContext, language:
     group: TaskGroup = await conf.bitrix_db.get_group_by_title(group_title)
     db_users = await conf.bitrix_db.get_users_by_region_and_group(group_title=group_title, region_title=region_title)
     if not group.assign_executor or not db_users:
-        await state.set_state(User.create_task_title)
-        await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+        await to_create_task_title(message, state, language)
     else:
         users = []
         users_id_by_index = {}
@@ -464,6 +505,150 @@ async def to_create_task_executor(message: Message, state: FSMContext, language:
         await message.answer(_("task.choose_executor", language), reply_markup=build_rkb(users, language))
 
 
+async def load_custom_fields(state: FSMContext, group_title: str) -> None:
+    """Put the group's custom fields into the FSM data as two ordered queues.
+
+    Stored as plain dicts (not ORM objects) because aiogram has to serialise the
+    FSM data; each entry keeps everything a step needs to ask and validate.
+    """
+    group = await conf.bitrix_db.get_group_by_title(group_title)
+    fields: list[CustomField] = await conf.bitrix_db.get_custom_fields(group_id=group.id) if group else []
+
+    queues: dict[str, list[dict]] = {CustomFieldStage.BEFORE_TITLE: [], CustomFieldStage.AFTER_DESCRIPTION: []}
+    for field in fields:
+        if field.ask_stage not in queues:
+            continue
+
+        # a select without options would show a keyboard the user cannot answer
+        if field.field_type == CustomFieldType.SELECT and not field.options:
+            continue
+
+        queues[field.ask_stage].append(
+            {
+                "id": field.id,
+                "title": field.title,
+                "question": field.question,
+                "type": field.field_type,
+                "required": field.required,
+                "options": [option.title for option in field.options]
+            }
+        )
+
+    await state.update_data(
+        {
+            "custom_fields": queues,
+            "custom_values": {},  # field id (as str) -> answer
+            "custom_stage": None,
+            "custom_index": 0
+        }
+    )
+
+
+async def ask_custom_fields(message: Message, state: FSMContext, language: str, ask_stage: str) -> bool:
+    """Start asking the fields of `ask_stage`; False when the group has none."""
+    data = await state.get_data()
+    fields = (data.get("custom_fields") or {}).get(ask_stage) or []
+    if not fields:
+        return False
+
+    await state.update_data({"custom_stage": ask_stage, "custom_index": 0})
+    await state.set_state(User.create_task_custom_field)
+    await send_custom_field(message, state, language)
+    return True
+
+
+async def send_custom_field(message: Message, state: FSMContext, language: str) -> None:
+    """Ask the field the flow currently stands on."""
+    data = await state.get_data()
+    field = current_custom_field(data)
+    if not field:
+        return
+
+    options = field["options"] if field["type"] == CustomFieldType.SELECT else []
+
+    question = (field.get("question") or "").strip()
+    if question:
+        text = question.translate(change_tag)
+
+    elif field["type"] == CustomFieldType.SELECT:
+        text = _("task.custom_select", language).format(field=field["title"].translate(change_tag))
+
+    else:
+        text = _("task.custom_text", language).format(field=field["title"].translate(change_tag))
+
+    await message.answer(
+        text,
+        reply_markup=custom_field_rkb(options, language, skip=not field["required"])
+    )
+
+
+def current_custom_field(data: dict) -> dict | None:
+    """The field the flow stands on, or None when the current queue is done."""
+    ask_stage = data.get("custom_stage")
+    if not ask_stage:
+        return None
+
+    fields = (data.get("custom_fields") or {}).get(ask_stage) or []
+    index = data.get("custom_index", 0)
+    if index >= len(fields):
+        return None
+
+    return fields[index]
+
+
+async def continue_after_custom_fields(message: Message, state: FSMContext, language: str) -> None:
+    """Leave the custom field queue for the step it was inserted in front of."""
+    data = await state.get_data()
+    ask_stage = data.get("custom_stage")
+    await state.update_data({"custom_stage": None, "custom_index": 0})
+
+    if ask_stage == CustomFieldStage.AFTER_DESCRIPTION:
+        await ask_task_files(message, state, language)
+    else:
+        await ask_task_title(message, state, language)
+
+
+async def back_from_custom_field(message: Message, state: FSMContext, language: str) -> None:
+    """Step one custom field back, or out of the queue to the previous step."""
+    data = await state.get_data()
+    index = data.get("custom_index", 0)
+
+    if index > 0:
+        await state.update_data({"custom_index": index - 1})
+        await send_custom_field(message, state, language)
+        return
+
+    if data.get("custom_stage") == CustomFieldStage.AFTER_DESCRIPTION:
+        await state.update_data({"custom_stage": None, "custom_index": 0})
+        await back_to_create_task_description(message, state, language)
+    else:
+        await to_user_main_menu(message, state, language)
+
+
+def collect_custom_values(data: dict) -> list[dict]:
+    """Answers in the order the fields were asked, ready for the DB."""
+    answers: dict = data.get("custom_values") or {}
+    queues: dict = data.get("custom_fields") or {}
+    result = []
+
+    for ask_stage in (CustomFieldStage.BEFORE_TITLE, CustomFieldStage.AFTER_DESCRIPTION):
+        for field in queues.get(ask_stage) or []:
+            value = answers.get(str(field["id"]))
+            if not value:
+                continue
+
+            result.append(
+                {
+                    "field_id": field["id"],
+                    "field_title": field["title"],
+                    "value": value,
+                    "sort": len(result)
+                }
+            )
+
+    return result
+
+
 async def to_group_status(message: Message, state: FSMContext, language: str) -> None:
     groups = await conf.bitrix_db.select_info(TaskGroup.title)
     await state.set_data({"groups": groups})
@@ -474,8 +659,7 @@ async def to_group_status(message: Message, state: FSMContext, language: str) ->
 async def back_to_create_task_title(message: Message, state: FSMContext, language: str) -> None:
     data = await state.get_data()
     if data.get("group"):
-        await state.set_state(User.create_task_title)
-        await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+        await ask_task_title(message, state, language)
 
     else:
         await to_create_task(message, state, language)

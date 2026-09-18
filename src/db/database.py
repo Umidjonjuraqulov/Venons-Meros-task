@@ -9,7 +9,7 @@ from sqlalchemy.sql import ColumnElement
 from sqlalchemy.orm import selectinload
 
 from .models import Base, User, Task, TaskUser, File, TaskGroup, Stage, Comment, Department, DepartmentUser, Role, \
-    UserRole, UserGroupRules, Region
+    UserRole, UserGroupRules, Region, CustomField, CustomFieldOption, TaskCustomValue
 from src.classes.cls_const import TaskRole, StageType
 
 
@@ -941,3 +941,81 @@ class BitrixDB:
                 return result.scalars().unique().all()
             except Exception as e:
                 print(e)  # LOG
+
+    async def get_custom_fields(
+            self, group_id: int = None, ask_stage: str = None, active: bool = True
+    ) -> Sequence[CustomField]:
+        """Custom fields of a task group, ordered the way the bot asks them."""
+        async with self.session_factory() as session:
+            # "before title" fields first, so the rows come back in the order the bot asks them
+            query = (
+                select(CustomField)
+                .options(selectinload(CustomField.options))
+                .order_by(CustomField.ask_stage.desc(), CustomField.sort, CustomField.id)
+            )
+
+            if group_id:
+                query = query.filter(CustomField.group_id == group_id)
+
+            if ask_stage:
+                query = query.filter(CustomField.ask_stage == ask_stage)
+
+            if isinstance(active, bool):
+                query = query.filter(CustomField.active.is_(active))
+
+            try:
+                result = await session.execute(query)
+                return result.scalars().unique().all()
+            except Exception as e:
+                print(e)  # LOG
+                return []
+
+    async def get_custom_field(self, id_: int) -> CustomField | None:
+        async with self.session_factory() as session:
+            query = (
+                select(CustomField)
+                .options(selectinload(CustomField.options))
+                .filter(CustomField.id == id_)
+            )
+            try:
+                result = await session.execute(query)
+                return result.scalars().unique().one_or_none()
+            except Exception as e:
+                print(e)  # LOG
+
+    async def add_task_custom_values(self, task_id: int, values: Sequence[dict]) -> Sequence[TaskCustomValue]:
+        """values: [{"field_id": int | None, "field_title": str, "value": str | None, "sort": int}, ...]"""
+        async with self.session_factory() as session:
+            rows = [
+                TaskCustomValue(
+                    task_id=task_id,
+                    field_id=value.get("field_id"),
+                    field_title=value["field_title"],
+                    value=value.get("value"),
+                    sort=value.get("sort", index)
+                )
+                for index, value in enumerate(values)
+            ]
+            try:
+                async with session.begin():
+                    session.add_all(rows)
+                await session.commit()
+                return rows
+
+            except Exception as e:
+                print(e)  # LOG
+                return []
+
+    async def get_task_custom_values(self, task_id: int) -> Sequence[TaskCustomValue]:
+        async with self.session_factory() as session:
+            query = (
+                select(TaskCustomValue)
+                .filter(TaskCustomValue.task_id == task_id)
+                .order_by(TaskCustomValue.sort, TaskCustomValue.id)
+            )
+            try:
+                result = await session.execute(query)
+                return result.scalars().unique().all()
+            except Exception as e:
+                print(e)  # LOG
+                return []

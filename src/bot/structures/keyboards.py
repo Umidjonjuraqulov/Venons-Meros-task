@@ -139,6 +139,31 @@ def build_rkb(buttons: Sequence[str], language: str, back: bool = True, adjust: 
     return result.as_markup(resize_keyboard=True)
 
 
+def custom_field_rkb(
+        options: Sequence[str], language: str, skip: bool = False, adjust: int = 2
+) -> ReplyKeyboardMarkup:
+    """Keyboard for one custom field step.
+
+    `options` are the buttons of a select field (empty for a text field, which
+    is answered by typing). An optional field also offers "skip"; both kinds
+    always offer back/cancel so the user can leave the creation flow.
+    """
+    result = ReplyKeyboardBuilder()
+    for option in options:
+        result.add(KeyboardButton(text=option))
+
+    result.adjust(adjust)
+
+    if skip:
+        result.row(KeyboardButton(text=_("b.skip", language)))
+
+    result.row(
+        KeyboardButton(text=_("b.back", language)),
+        KeyboardButton(text=_("b.cancel", language))
+    )
+    return result.as_markup(resize_keyboard=True)
+
+
 def build_ikb(buttons: dict[str, str] | Sequence[str], adjust: int = 3) -> InlineKeyboardMarkup:
     result = InlineKeyboardBuilder()
     if isinstance(buttons, dict):

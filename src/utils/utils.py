@@ -6,7 +6,7 @@ from logging import ERROR
 from aiogram import Bot
 from aiogram.types import InputMediaDocument, BufferedInputFile
 
-from src.db.models import Stage, Task, User
+from src.db.models import Stage, Task, TaskCustomValue, User
 
 from src.i18n.i18n import translate as _
 
@@ -57,6 +57,64 @@ def format_user_with_phone(user: "User | None", default: str = None, link: bool 
         return f"{name} ({escape(phone)})"
 
     return name
+
+
+def format_custom_values(
+        values: "Sequence[TaskCustomValue] | None", html: bool = True, escape_values: bool = True
+) -> str:
+    """The "label: value" block shown for a task's custom fields.
+
+    Used both for bot messages (html=True, the bot's parse mode) and for the
+    Bitrix task description (html=False — Bitrix renders BBCode, not HTML).
+    Returns "" when the task has no values, so callers can concatenate it
+    unconditionally; a filled block always ends with a newline.
+    """
+    if not values:
+        return ""
+
+    lines = []
+    for value in values:
+        if not value.value:
+            continue
+
+        title = value.field_title
+        text = value.value
+        if escape_values:
+            title = escape(title)
+            text = escape(text)
+
+        lines.append(f"<b>{title}</b>: {text}" if html else f"{title}: {text}")
+
+    if not lines:
+        return ""
+
+    return "\n".join(lines) + "\n"
+
+
+def build_bitrix_description(
+        manager_name: str, description: str, custom_values: "Sequence[TaskCustomValue] | None" = None
+) -> str:
+    """The Bitrix task description: manager line, custom fields, then the text.
+
+    Bitrix fires its "task added" webhook for tasks the bot itself just created,
+    and that handler re-builds the description from what Bitrix returns — which
+    already carries this header. So an existing manager line is stripped first,
+    making the call idempotent instead of stacking a second one.
+    """
+    from src.static.message_answers import MANAGER_TEXT
+
+    field_block = format_custom_values(custom_values, html=False, escape_values=False)
+    field_lines = set(field_block.splitlines())
+
+    body = description or ""
+    while body.startswith(MANAGER_TEXT):
+        # drop the manager line, then the custom field lines that follow it, so
+        # re-building an already-prefixed description does not stack a copy
+        _manager_line, _sep, body = body.partition("\n")
+        while field_lines and body.partition("\n")[0] in field_lines:
+            _field_line, _sep, body = body.partition("\n")
+
+    return f"{MANAGER_TEXT}{manager_name}\n" + field_block + body
 
 
 async def get_file_id(bot: Bot, chat_id: int | str, file: bytes, file_name: str, delete=True) -> str:

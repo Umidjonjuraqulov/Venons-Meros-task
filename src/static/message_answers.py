@@ -36,7 +36,7 @@ class MyTaskANS:
     DELETE_ERROR = "❌Ошибка удаления, попробуйте позже"
 
     TASK_INFO = """📋#Задача_{bit_id}: <b>{task_name}</b>
-📒Описание: {description}
+{custom_fields}📒Описание: {description}
 ----------------------------------------
 🗓 Дата создания: <b>{created_date}</b>
 👤 Заказчик: <b>{creator}</b>
@@ -58,7 +58,7 @@ class MyTaskANS:
 # ------------------------------------ Notify -------------------------------------------------------------------------
 class TaskNFY:
     TASK = """📋#Задача_{bit_id}: <b>{task_name}</b>
-----------------------------------------
+{custom_fields}----------------------------------------
 🗓 Дата создания: <b>{created_date}</b>
 👤 Заказчик: <b>{creator}</b>
 👨🏻‍💻 Исполнитель: <b>{developer}</b>
@@ -77,7 +77,7 @@ class TaskNFY:
     NEW_TASK = "🆕 Создано новая задача с Bitrix"
     CREATED_TASK = (
         "👤<b>{name}</b>\n📖Создал задачу: <b>{task_name}</b>\n"
-        "🗓 Дата создания: <b>{created_date}</b>\n📒Описание: {description}"
+        "🗓 Дата создания: <b>{created_date}</b>\n{custom_fields}📒Описание: {description}"
     )
     CHANGE_GROUP = "🏢 Подразделение: <b>{from_} ➡️ {to}</b>"
     TASK_RESPONSIBLE = "👨🏻‍💻<b>{name}</b> назначен исполнителем\n"

@@ -70,7 +70,13 @@ translations = {
         "task.file_err": "❗️Ошибка загрузки файла",
         "task.upload": "🚀Загрузка...",
         "task.done": "✅Задача успешно создана.",
-        "task.err": "❌Ошибка загрузки задачи."
+        "task.err": "❌Ошибка загрузки задачи.",
+
+        "task.custom_text": "✍️ Введите значение для поля <b>{field}</b>",
+        "task.custom_select": "⬇️ Выберите значение для поля <b>{field}</b>",
+        "task.custom_text_err": "❗️Отправьте текст для поля <b>{field}</b>",
+        "task.custom_select_err": "❗️Выберите значение из предложенных вариантов",
+        "task.custom_required": "❗️Поле <b>{field}</b> обязательно для заполнения"
 
     },
 
@@ -138,6 +144,12 @@ translations = {
         "task.file_err": "❗️Fayl yuklashda xatolik",
         "task.upload": "🚀Yuklanmoqda...",
         "task.done": "✅Vazifa/Taklif muvaffaqiyatli yaratildi.",
-        "task.err": "❌Vazifa/Taklif yuklashda xatolik."
+        "task.err": "❌Vazifa/Taklif yuklashda xatolik.",
+
+        "task.custom_text": "✍️ <b>{field}</b> maydoni uchun qiymat kiriting",
+        "task.custom_select": "⬇️ <b>{field}</b> maydoni uchun qiymatni tanlang",
+        "task.custom_text_err": "❗️<b>{field}</b> maydoni uchun matn yuboring",
+        "task.custom_select_err": "❗️Taklif qilingan variantlardan birini tanlang",
+        "task.custom_required": "❗️<b>{field}</b> maydoni to‘ldirilishi shart"
     }
 }

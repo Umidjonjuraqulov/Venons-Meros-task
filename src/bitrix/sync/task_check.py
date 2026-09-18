@@ -11,11 +11,13 @@ from .task_update import UpdateTask
 
 from src.db.database import TaskUserRoles
 from src.db.models import File, Task, TaskGroup, User, Stage
-from src.utils.utils import get_file_id, send_documents, format_user_with_phone
+from src.utils.utils import (
+    get_file_id, send_documents, format_user_with_phone, format_custom_values, build_bitrix_description
+)
 from src.classes.cls_const import TaskRole, FileTypeConst, StageType, UserGroupRole
 from src.classes.models.notfiy_manager import NotifyManager
 from src.static.bit_static import task_comment_filter
-from src.static.message_answers import MyTaskANS, TaskNFY, StageNotify, DONT_CHOOSE_ANS, MANAGER_TEXT, change_tag
+from src.static.message_answers import MyTaskANS, TaskNFY, StageNotify, DONT_CHOOSE_ANS, change_tag
 
 from src.bot.structures.keyboards import comment_answer_ikb
 
@@ -94,6 +96,7 @@ class TaskSync(BaseBitSync):
                 notify = TaskNFY.TASK.format(
                     bit_id=task.bit_task_id,
                     task_name=task.title.translate(change_tag),
+                    custom_fields=format_custom_values(task.custom_values),
                     created_date=task.created_date.strftime("%d.%m.%Y %H:%M") if task.created_date else DONT_CHOOSE_ANS,
                     creator=format_user_with_phone(
                         roles.creator.user if roles.creator else None, DONT_CHOOSE_ANS
@@ -211,7 +214,7 @@ class TaskSync(BaseBitSync):
         if bit_id_observers:
             await self.bitrix.update_task(
                 task_id=task_bit_id,
-                description=f"{MANAGER_TEXT}{manager.full_name}\n{task_in_bitrix.get('description', '')}",
+                description=build_bitrix_description(manager.full_name, task_in_bitrix.get("description", "")),
                 auditors=list(bit_id_observers)
             )
 
@@ -306,6 +309,7 @@ class TaskSync(BaseBitSync):
         notify = TaskNFY.TASK.format(
             bit_id=task_in_db[0].bit_task_id,
             task_name=task_in_db[0].title.translate(change_tag),
+            custom_fields=format_custom_values(task_in_db[0].custom_values),
             created_date=task_in_db[0].created_date.strftime("%d.%m.%Y %H:%M") if task_in_db[0].created_date else DONT_CHOOSE_ANS,
             creator=task_users_name.get("creator"),
             developer=task_users_name.get("developer"),

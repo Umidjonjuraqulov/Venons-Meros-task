@@ -12,7 +12,7 @@ from src.bot.util.templates import can_delete
 from src.bot.structures.fsm import User
 
 from src.classes.data_classes import TaskInfo
-from src.utils.utils import format_user_with_phone
+from src.utils.utils import format_user_with_phone, format_custom_values
 from src.db.models import User as UserModel
 from src.configuration import conf
 
@@ -138,10 +138,11 @@ async def format_task_info(task_db_id: int) -> dict:
         developer=developer_name,
         manager=manager_name,
         observers=observers,
-        can_delete=can_delete(task_in_db)
+        can_delete=can_delete(task_in_db),
+        custom_fields=format_custom_values(task_in_db.custom_values)
     )
     msg = MyTaskANS.TASK_INFO.format(
-        bit_id=task.bit_id,
+        bit_id=task.bit_id, custom_fields=task.custom_fields,
         task_name=task.title.translate(change_tag), description=task.description[0:2048].translate(change_tag),
         created_date=task.create_date.strftime("%d.%m.%Y %H:%M") if task.create_date else DONT_CHOOSE_ANS,
         creator=task.creator, developer=task.developer, manager=task.manager,

@@ -26,3 +26,5 @@ class TaskInfo:
     manager: str | None
     observers: list[str] | None
     can_delete: bool
+    custom_fields: str = ""
+    """pre-formatted "label: value" block, see utils.format_custom_values"""

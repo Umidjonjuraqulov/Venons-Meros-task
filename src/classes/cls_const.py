@@ -41,3 +41,22 @@ class UserGroupRole:
     NEWER = "newer"
 
     ALL = {ALLWAYS, NEWER}
+
+
+class CustomFieldType:
+    TEXT = "text"
+    SELECT = "select"
+
+    ALL = {TEXT, SELECT}
+
+
+class CustomFieldStage:
+    """When a custom field is asked during task creation.
+
+    BEFORE_TITLE: right after the group/region/executor steps.
+    AFTER_DESCRIPTION: after the description, before the file upload step.
+    """
+    BEFORE_TITLE = "before_title"
+    AFTER_DESCRIPTION = "after_description"
+
+    ALL = {BEFORE_TITLE, AFTER_DESCRIPTION}

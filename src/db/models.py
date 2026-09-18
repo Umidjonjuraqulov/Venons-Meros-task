@@ -168,6 +168,9 @@ class TaskGroup(Base):
         "UserGroupRules", back_populates="group", uselist=True
     )
     users: Mapped[list["User"]] = relationship(back_populates="group")
+    custom_fields: Mapped[list["CustomField"]] = relationship(
+        back_populates="group", cascade="all, delete-orphan", order_by="CustomField.sort"
+    )
 
     def __str__(self):
         return self.title
@@ -231,6 +234,9 @@ class Task(Base):
     files: Mapped[list["File"]] = relationship(back_populates="task", cascade="all, delete-orphan")
     comments: Mapped[list["Comment"]] = relationship(back_populates="task", cascade="all, delete-orphan")
     region: Mapped["Region"] = relationship(back_populates="tasks", lazy="joined")
+    custom_values: Mapped[list["TaskCustomValue"]] = relationship(
+        back_populates="task", cascade="all, delete-orphan", lazy="joined"
+    )
 
     def __str__(self):
         return self.title
@@ -331,3 +337,78 @@ class Region(Base):
 
     def __str__(self):
         return self.name
+
+class CustomField(Base):
+    """An extra question the bot asks while a task is created in a task group.
+
+    A field belongs to exactly one group: two groups asking "Приоритет" are two
+    rows, so their options and their position in the flow stay independent.
+    """
+    __tablename__ = "custom_fields"
+
+    group_id: Mapped[int] = mapped_column(
+        sa.ForeignKey("task_groups.id", ondelete="CASCADE"), unique=False, nullable=False
+    )
+    title: Mapped[str] = mapped_column(sa.String, unique=False, nullable=False)
+    question: Mapped[str] = mapped_column(sa.Text, unique=False, nullable=True)
+    """what the bot asks; falls back to a prompt generated from `title` when empty"""
+    field_type: Mapped[str] = mapped_column(sa.String, unique=False, nullable=False)  # CustomFieldType
+    ask_stage: Mapped[str] = mapped_column(sa.String, unique=False, nullable=False)  # CustomFieldStage
+    sort: Mapped[int] = mapped_column(sa.Integer, default=0, unique=False, nullable=False)
+    required: Mapped[bool] = mapped_column(default=True, unique=False, nullable=False)
+    active: Mapped[bool] = mapped_column(default=True, unique=False, nullable=False)
+
+    # relationships
+    group: Mapped["TaskGroup"] = relationship(back_populates="custom_fields", lazy="joined")
+    options: Mapped[list["CustomFieldOption"]] = relationship(
+        back_populates="field", cascade="all, delete-orphan", lazy="selectin", order_by="CustomFieldOption.sort"
+    )
+    # no delete cascade: removing a field must keep the answers already given on
+    # existing tasks, which survive with field_id NULL and their stored title
+    values: Mapped[list["TaskCustomValue"]] = relationship(back_populates="field", passive_deletes=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.group.title}"
+
+
+class CustomFieldOption(Base):
+    """One keyboard button of a `select` custom field."""
+    __tablename__ = "custom_field_options"
+
+    field_id: Mapped[int] = mapped_column(
+        sa.ForeignKey("custom_fields.id", ondelete="CASCADE"), unique=False, nullable=False
+    )
+    title: Mapped[str] = mapped_column(sa.String, unique=False, nullable=False)
+    sort: Mapped[int] = mapped_column(sa.Integer, default=0, unique=False, nullable=False)
+
+    # relationships
+    field: Mapped["CustomField"] = relationship(back_populates="options", lazy="joined")
+
+    def __str__(self):
+        return self.title
+
+
+class TaskCustomValue(Base):
+    """The answer one task carries for one custom field.
+
+    `field_title` is denormalised so a task keeps showing what was asked even
+    after the field is renamed or removed from the group.
+    """
+    __tablename__ = "task_custom_values"
+
+    task_id: Mapped[int] = mapped_column(
+        sa.ForeignKey("tasks.id", ondelete="CASCADE"), unique=False, nullable=False
+    )
+    field_id: Mapped[int] = mapped_column(
+        sa.ForeignKey("custom_fields.id", ondelete="SET NULL"), unique=False, nullable=True
+    )
+    field_title: Mapped[str] = mapped_column(sa.String, unique=False, nullable=False)
+    value: Mapped[str] = mapped_column(sa.Text, unique=False, nullable=True)
+    sort: Mapped[int] = mapped_column(sa.Integer, default=0, unique=False, nullable=False)
+
+    # relationships
+    task: Mapped["Task"] = relationship(back_populates="custom_values")
+    field: Mapped["CustomField"] = relationship(back_populates="values", lazy="joined")
+
+    def __str__(self):
+        return f"{self.field_title}: {self.value}"

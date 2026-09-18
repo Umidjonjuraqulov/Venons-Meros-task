@@ -5,11 +5,13 @@ from starlette.responses import RedirectResponse
 
 from src.db.models import (
     User, Task, TaskUser, File, TaskGroup, Stage, Comment, Department, DepartmentUser, Role, RoleAccess, UserRole,
-    UserGroupRules, Region
+    UserGroupRules, Region, CustomField, CustomFieldOption, TaskCustomValue
 )
-from wtforms import SelectField
+from wtforms import SelectField, TextAreaField
 
-from src.classes.cls_const import AccessLevelConst, TaskRole, FileTypeConst, StageType, UserGroupRole
+from src.classes.cls_const import (
+    AccessLevelConst, TaskRole, FileTypeConst, StageType, UserGroupRole, CustomFieldType, CustomFieldStage
+)
 from src.utils.utils import mark_as_paid as m_paid
 
 from src.configuration import conf
@@ -661,3 +663,109 @@ class RegionAdmin(ModelView, model=Region):
             "order_by": "full_name",
         }
     }
+
+class CustomFieldAdmin(ModelView, model=CustomField):
+    page_size = 50
+    name = "Доп. поле"
+    name_plural = "Доп. поля"
+    icon = "fa-solid fa-list-check"
+    can_create = True
+    save_as_continue = False
+    can_delete = True
+
+    column_labels = {
+        CustomField.group: "Группа задачи",
+        CustomField.title: "Название",
+        CustomField.question: "Текст вопроса в боте",
+        CustomField.field_type: "Тип поля",
+        CustomField.ask_stage: "Когда спрашивать",
+        CustomField.sort: "Позиция",
+        CustomField.required: "Обязательное",
+        CustomField.active: "Активно",
+        CustomField.options: "Варианты ответа"
+    }
+
+    column_default_sort = [(CustomField.group_id, False), (CustomField.sort, False)]
+
+    column_list = [
+        CustomField.id, CustomField.group, CustomField.title, CustomField.field_type,
+        CustomField.ask_stage, CustomField.sort, CustomField.required, CustomField.active
+    ]
+    column_details_list = [
+        CustomField.id, CustomField.group, CustomField.title, CustomField.question, CustomField.field_type,
+        CustomField.ask_stage, CustomField.sort, CustomField.required, CustomField.active, CustomField.options
+    ]
+    form_columns = [
+        CustomField.group, CustomField.title, CustomField.question, CustomField.field_type,
+        CustomField.ask_stage, CustomField.sort, CustomField.required, CustomField.active
+    ]
+
+    form_overrides = {"field_type": SelectField, "ask_stage": SelectField, "question": TextAreaField}
+    form_args = {
+        "question": {
+            "description": (
+                "Вопрос, который бот задаёт пользователю. "
+                "Если пусто — вопрос составляется из названия поля."
+            )
+        },
+        "field_type": {
+            "choices": [
+                (CustomFieldType.TEXT, "Текст"),
+                (CustomFieldType.SELECT, "Выбор из вариантов")
+            ]
+        },
+        "ask_stage": {
+            "choices": [
+                (CustomFieldStage.BEFORE_TITLE, "До названия задачи"),
+                (CustomFieldStage.AFTER_DESCRIPTION, "После описания задачи")
+            ]
+        }
+    }
+
+
+class CustomFieldOptionAdmin(ModelView, model=CustomFieldOption):
+    page_size = 100
+    name = "Вариант доп. поля"
+    name_plural = "Варианты доп. полей"
+    icon = "fa-solid fa-list-ul"
+    can_create = True
+    save_as_continue = True
+    can_delete = True
+
+    column_labels = {
+        CustomFieldOption.field: "Доп. поле",
+        CustomFieldOption.title: "Название кнопки",
+        CustomFieldOption.sort: "Позиция"
+    }
+
+    column_default_sort = [(CustomFieldOption.field_id, False), (CustomFieldOption.sort, False)]
+
+    column_list = [CustomFieldOption.id, CustomFieldOption.field, CustomFieldOption.title, CustomFieldOption.sort]
+    column_details_list = [
+        CustomFieldOption.id, CustomFieldOption.field, CustomFieldOption.title, CustomFieldOption.sort
+    ]
+    form_columns = [CustomFieldOption.field, CustomFieldOption.title, CustomFieldOption.sort]
+
+
+class TaskCustomValueAdmin(ModelView, model=TaskCustomValue):
+    page_size = 50
+    name = "Значение доп. поля"
+    name_plural = "Значения доп. полей"
+    icon = "fa-solid fa-pen-to-square"
+    can_create = False
+    can_edit = False
+    can_delete = False
+
+    column_labels = {
+        TaskCustomValue.task: "Задача",
+        TaskCustomValue.field_title: "Название поля",
+        TaskCustomValue.value: "Значение"
+    }
+
+    column_searchable_list = [TaskCustomValue.field_title]
+    column_list = [
+        TaskCustomValue.id, TaskCustomValue.task, TaskCustomValue.field_title, TaskCustomValue.value
+    ]
+    column_details_list = [
+        TaskCustomValue.id, TaskCustomValue.task, TaskCustomValue.field_title, TaskCustomValue.value
+    ]

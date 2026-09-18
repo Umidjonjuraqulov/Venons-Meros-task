@@ -14,7 +14,10 @@ from .model_view import (
     TaskUserAdmin,
     FileAdmin,
     CommentAdmin,
-    RegionAdmin
+    RegionAdmin,
+    CustomFieldAdmin,
+    CustomFieldOptionAdmin,
+    TaskCustomValueAdmin
 )
 
 all_admin_models = [
@@ -31,5 +34,8 @@ all_admin_models = [
     TaskUserAdmin,
     FileAdmin,
     CommentAdmin,
-    RegionAdmin
+    RegionAdmin,
+    CustomFieldAdmin,
+    CustomFieldOptionAdmin,
+    TaskCustomValueAdmin
 ]

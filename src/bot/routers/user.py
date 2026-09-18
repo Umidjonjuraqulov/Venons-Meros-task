@@ -100,6 +100,7 @@ async def user_create_task_group(message: Message, state: FSMContext, language: 
         can_crate_status = await can_crate(message.from_user.id, message.text)
         if can_crate_status is True:
             await state.set_data({"group": message.text})
+            await load_custom_fields(state, message.text)
             # filter regions by task group name
             regions = await get_regions_by_task_group(message.text)
             if not regions:
@@ -140,9 +141,8 @@ async def user_create_task_executor(message: Message, state: FSMContext, languag
         index, name = message.text.split(". ", maxsplit=1)
         users_id_by_index: dict = data["users_id_by_index"]
         executor_db_id = users_id_by_index.get(int(index))
-        await state.set_state(User.create_task_title)
         await state.update_data({"executor_id": executor_db_id})
-        await message.answer(_("task.title", language), reply_markup=back_and_cancel_rkb(language))
+        await to_create_task_title(message, state, language)
     else:
         await message.answer(_("task.choose_executor", language))
 
@@ -173,12 +173,63 @@ async def user_create_task_description(message: Message, state: FSMContext, lang
         await to_user_main_menu(message, state, language)
 
     elif message.text:
-        await state.set_state(User.create_task_files)
         await state.update_data({"description": message.text})
-        await message.answer(_("task.file", language), reply_markup=task_file_rkb(language))
+        await to_create_task_files(message, state, language)
 
     else:
         await message.answer(_("task.description", language)+"!")
+
+
+@user_router.message(User.create_task_custom_field)
+async def user_create_task_custom_field(message: Message, state: FSMContext, language: str):
+    data = await state.get_data()
+    field = current_custom_field(data)
+
+    if not field:  # nothing left to ask, e.g. a stale message for a finished queue
+        await continue_after_custom_fields(message, state, language)
+        return
+
+    if message.text == _("b.cancel", language):
+        await to_user_main_menu(message, state, language)
+        return
+
+    if message.text == _("b.back", language):
+        await back_from_custom_field(message, state, language)
+        return
+
+    if message.text == _("b.skip", language):
+        if field["required"]:
+            await message.answer(_("task.custom_required", language).format(field=field["title"].translate(change_tag)))
+            return
+
+        value = None
+
+    elif field["type"] == CustomFieldType.SELECT:
+        if message.text not in field["options"]:
+            await message.answer(_("task.custom_select_err", language))
+            return
+
+        value = message.text
+
+    else:
+        if not message.text:
+            await message.answer(_("task.custom_text_err", language).format(field=field["title"].translate(change_tag)))
+            return
+
+        value = message.text
+
+    values: dict = data.get("custom_values") or {}
+    if value is None:
+        values.pop(str(field["id"]), None)
+    else:
+        values[str(field["id"])] = value
+
+    await state.update_data({"custom_values": values, "custom_index": data.get("custom_index", 0) + 1})
+
+    if current_custom_field(await state.get_data()):
+        await send_custom_field(message, state, language)
+    else:
+        await continue_after_custom_fields(message, state, language)
 
 
 @user_router.message(User.create_task_files)
@@ -207,7 +258,8 @@ async def user_create_task_file(message: Message, state: FSMContext, bot: Bot, l
             group=data["group"],
             region=data["region"],
             user_tg_id=message.from_user.id,
-            executor_id=data.get("executor_id")
+            executor_id=data.get("executor_id"),
+            custom_values=collect_custom_values(data)
         )
         if status:
             await message.answer(_("task.done", language))
@@ -308,6 +360,7 @@ async def user_my_tasks(message: Message, state: FSMContext, language: str):
             task_info: TaskInfo = tasks[int(message.text)]
             msg = MyTaskANS.TASK_INFO.format(
                 bit_id=task_info.bit_id, task_name=task_info.title.translate(change_tag),
+                custom_fields=task_info.custom_fields,
                 description=task_info.description[0:2048].translate(change_tag),
                 created_date=task_info.create_date.strftime("%d.%m.%Y %H:%M") if task_info.create_date else DONT_CHOOSE_ANS,
                 creator=task_info.creator, developer=task_info.developer, manager=task_info.manager,
