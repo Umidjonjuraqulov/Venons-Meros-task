@@ -151,14 +151,25 @@ async def create_task(
         task_in_db.stage_id = stage_in_db[0].id
         await conf.bitrix_db.update_task(task_in_db)
 
-        if tg_id_observers:
+        # The executor is already in task_users, so the later Bitrix sync sees no executor
+        # change and never sends TASK_RESPONSIBLE — notify them here. Skip the creator
+        # (they get "task.done") and the bot's own Bitrix account (the default executor).
+        notify_tg_ids = set(tg_id_observers)
+        if (
+            executor_user_db.tg_id
+            and executor_user_db.id != task_user_db.id
+            and executor_user_db.bit_user_id != conf.bitrix.conf.data.current_id
+        ):
+            notify_tg_ids.add(executor_user_db.tg_id)
+
+        if notify_tg_ids:
             msg = TaskNFY.CREATED_TASK.format(
                 name=task_user_db.full_name, task_name=task_in_db.title.translate(change_tag),
                 created_date=task_in_db.created_date.strftime("%d.%m.%Y %H:%M"),
                 custom_fields=format_custom_values(custom_values_db),
                 description=task_in_db.description[0:2048].translate(change_tag)
             )
-            await conf.notify_manager.notify(msg=msg, tg_ids=tg_id_observers)
+            await conf.notify_manager.notify(msg=msg, tg_ids=notify_tg_ids)
 
         if without_manager:
             warning_msg = (
