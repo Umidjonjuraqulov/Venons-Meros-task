@@ -40,6 +40,7 @@ class Config(Singleton):
         self.bit_rest_url = getenv("BIT_REST_URL")
         self.bit_hook_token = getenv("BIT_HOOK_TOKEN")
         self.bit_custom_paid = getenv("BIT_PAID_FILED")
+        self.bit_tg_id_field = getenv("BIT_TG_ID_FIELD")
 
         # bot
         self.notify_chat_id = getenv("NOTIFY_CHAT_ID")
@@ -71,7 +72,9 @@ class Config(Singleton):
         self.bit_sync = BitSync(
             bitrix_api=self.bitrix,
             db=self.bitrix_db,
-            loger=self.logger
+            loger=self.logger,
+            tg_id_field=self.bit_tg_id_field,
+            user_manager=self.user_manager
         )
         self.bit_sync.setup_task_sync(notify_manager=self.notify_manager, bot=self.bot, log_chat_id=self.log_chat_id)
         self.task_export = TaskExport(self.bitrix_db)

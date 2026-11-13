@@ -1,60 +1,137 @@
-from logging import ERROR
+from logging import ERROR, WARNING
 
 from src.bitrix import BitrixAPI
 from src.db.database import BitrixDB
-from src.db.models import TaskGroup, Stage, Department, DepartmentUser
+from src.db.models import TaskGroup, Stage, Department, DepartmentUser, User
 from src.classes.cls_const import AccessLevelConst
 from src.classes.models.logger import LogWriter
 
 
 class BaseBitSync:
     def __init__(
-            self, bitrix_api: BitrixAPI, db: BitrixDB, loger: LogWriter
+            self, bitrix_api: BitrixAPI, db: BitrixDB, loger: LogWriter,
+            tg_id_field: str | None = None, user_manager=None
     ) -> None:
+        """
+        tg_id_field: code of the Bitrix user field holding the Telegram ID (e.g. "UF_USR_1794565374094");
+            empty disables linking Bitrix users to Telegram accounts.
+        user_manager: UsersManager whose cache is dropped for every tg_id the sync links.
+        """
         self.bitrix = bitrix_api
         self.db = db
         self.logger = loger
+        self.tg_id_field = tg_id_field
+        self.user_manager = user_manager
+
+    @staticmethod
+    def parse_tg_id(value) -> int | None:
+        """Bitrix returns the field as a string (a list if the field is multiple); anything but digits is ignored."""
+        if isinstance(value, list):
+            value = value[0] if value else None
+
+        value = str(value or "").strip()
+        return int(value) if value.isdigit() else None
+
+    def forget_cached_user(self, *tg_ids: int | None) -> None:
+        if self.user_manager:
+            for tg_id in tg_ids:
+                if tg_id:
+                    self.user_manager.delete_user(tg_id)
 
     async def sync_users(self):
         try:
             bit_users = await self.bitrix.get_users()
-            bit_users_in_db = {user.bit_user_id: user for user in await self.db.get_user() if user.bit_user_id}
+            users_in_db = await self.db.get_user()
+            bit_users_in_db: dict[int, User] = {user.bit_user_id: user for user in users_in_db if user.bit_user_id}
+            tg_users_in_db: dict[int, User] = {user.tg_id: user for user in users_in_db if user.tg_id}
 
         except Exception as e:
             await self.logger.send_log(ERROR, "BitSync -> sync_users", e, msg="error getting users from bitrix")
             return
-        print(f"\n\n\n\n\n\n\n\n\n\n{bit_users}\n\n\n\n\n\n\n\n\n\n")
 
         for user in bit_users:
             try:
                 if user.get("ACTIVE") is False:   # skip fired employees
-                    print(f"\n\n\n\n\n\n\n\n\n\nuser active false {user.get('LAST_NAME')} {user.get('NAME')} {user.get('SECOND_NAME', '')}\n\n\n\n\n\n\n\n\n\n")
-                    
                     continue
 
                 user_bit_id = int(user.get("ID"))
                 full_name = f"{user.get('LAST_NAME')} {user.get('NAME')} {user.get('SECOND_NAME', '')}"
-                print(f"{full_name}, {AccessLevelConst.BITRIX}, {user_bit_id}")
-                if user_bit_id not in bit_users_in_db:
-                    await self.db.add_user(full_name, AccessLevelConst.BITRIX, bit_user_id=user_bit_id)
+                tg_id = self.parse_tg_id(user.get(self.tg_id_field)) if self.tg_id_field else None
 
-                else:
-                    change = False
-                    user_in_db = bit_users_in_db[user_bit_id]
+                user_in_db = bit_users_in_db.get(user_bit_id)
+                if user_in_db and user_in_db.full_name != full_name:
+                    user_in_db = await self.db.update_user_fields(user_in_db.id, full_name=full_name) or user_in_db
+                    bit_users_in_db[user_bit_id] = user_in_db
 
-                    if user_in_db.full_name != full_name:
-                        user_in_db.full_name = full_name
-                        change = True
+                if tg_id:
+                    user_in_db = await self.link_tg_user(user_bit_id, full_name, tg_id, user_in_db, tg_users_in_db)
+                    if user_in_db:
+                        bit_users_in_db[user_bit_id] = user_in_db
 
-                    if user.get("ACTIVE") is False:
-                        change = True
-                        user_in_db.access_level = AccessLevelConst.BLOCKED
-
-                    if change:
-                        await self.db.update_user(update_to=user_in_db)
+                if not user_in_db:
+                    user_in_db = await self.db.add_user(full_name, AccessLevelConst.BITRIX, bit_user_id=user_bit_id)
+                    bit_users_in_db[user_bit_id] = user_in_db
 
             except Exception as e:
                 await self.logger.send_log(ERROR, "BitSync -> sync_users", e, msg=f"sync {user=}")
+
+    async def link_tg_user(
+            self, user_bit_id: int, full_name: str, tg_id: int,
+            user_in_db: User | None, tg_users_in_db: dict[int, User]
+    ) -> User | None:
+        """Connect the Bitrix user to the Telegram account from its "Telegram ID" field.
+
+        - nobody in the DB has this tg_id: put it on the Bitrix user (created here if missing),
+          so the person is recognised when they open the bot;
+        - the person already registered in the bot: link that row to Bitrix, merging the
+          Bitrix-only row into it if there is one.
+        Conflicts (the tg_id or the Bitrix user already linked elsewhere) are left alone and logged,
+        so a typo in Bitrix can't detach a working account.
+        Returns the DB row now holding user_bit_id, or None if there isn't one yet.
+        """
+        tg_user = tg_users_in_db.get(tg_id)
+        if user_in_db and tg_user and user_in_db.id == tg_user.id:
+            return user_in_db  # already linked
+
+        if tg_user and tg_user.bit_user_id:
+            self.logger.write_log(
+                WARNING, "BitSync -> link_tg_user",
+                msg=f"Telegram ID {tg_id} of Bitrix user {user_bit_id} already belongs to Bitrix user "
+                    f"{tg_user.bit_user_id} (db id {tg_user.id}); not linked"
+            )
+            return user_in_db
+
+        if user_in_db and user_in_db.tg_id:
+            self.logger.write_log(
+                WARNING, "BitSync -> link_tg_user",
+                msg=f"Bitrix user {user_bit_id} (db id {user_in_db.id}) already has Telegram ID "
+                    f"{user_in_db.tg_id}, Bitrix field says {tg_id}; not changed"
+            )
+            return user_in_db
+
+        if tg_user:  # registered in the bot before the sync knew the tg_id
+            if user_in_db:
+                linked = await self.db.merge_users(
+                    to_user_id=tg_user.id, from_user_id=user_in_db.id, bit_user_id=user_bit_id
+                )
+            else:
+                linked = await self.db.update_user_fields(tg_user.id, bit_user_id=user_bit_id, full_name=full_name)
+
+            if not linked:
+                raise Exception(f"linking Bitrix user {user_bit_id} to db user {tg_user.id} (tg {tg_id}) failed")
+
+        elif user_in_db:  # not in the bot yet: pre-link so the first /start finds the account
+            linked = await self.db.update_user_fields(user_in_db.id, tg_id=tg_id)
+
+        else:
+            linked = await self.db.add_user(full_name, AccessLevelConst.BITRIX, tg_id=tg_id, bit_user_id=user_bit_id)
+
+        if not linked:  # a failed pre-link must not make sync_users add a duplicate row
+            return user_in_db
+
+        tg_users_in_db[tg_id] = linked
+        self.forget_cached_user(tg_id)
+        return linked
 
     async def sync_groups(self):
         try:

@@ -51,5 +51,6 @@ class UsersManager:
             self.not_registered.remove(tg_id)
 
     def delete_user(self, tg_id: int) -> None:
-        if tg_id in self.users:
-            del self.users[tg_id]
+        """Drop everything cached for tg_id, so the next update re-reads the user from the DB."""
+        self.users.pop(tg_id, None)
+        self.not_registered.discard(tg_id)

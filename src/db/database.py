@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Sequence, Optional
 
-from sqlalchemy import inspect, select, update, func, and_
+from sqlalchemy import inspect, select, update, delete, func, and_
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.orm import selectinload
 
 from .models import Base, User, Task, TaskUser, File, TaskGroup, Stage, Comment, Department, DepartmentUser, Role, \
-    UserRole, UserGroupRules, Region, CustomField, CustomFieldOption, TaskCustomValue
+    UserRole, UserGroupRules, Region, CustomField, CustomFieldOption, TaskCustomValue, user_region
 from src.classes.cls_const import TaskRole, StageType
 
 
@@ -103,7 +103,30 @@ class BitrixDB:
             except Exception as e:
                 print(e)  # LOG
 
-    async def merge_users(self, to_user_id: int, from_user_id: int) -> User | None:
+    async def update_user_fields(self, user_id: int, **fields) -> Optional[User]:
+        """Set exactly the given columns. Unlike `update_user`, it never touches `role_id`."""
+        async with self.session_factory() as session:
+            try:
+                async with session.begin():
+                    user = await session.get(User, user_id)
+                    if not user:
+                        return None
+
+                    for name, value in fields.items():
+                        setattr(user, name, value)
+
+                await session.commit()
+                return user
+
+            except Exception as e:
+                print(e)  # LOG
+
+    async def merge_users(self, to_user_id: int, from_user_id: int, bit_user_id: int = None) -> User | None:
+        """Move everything of `from_user` onto `to_user` and delete `from_user`.
+
+        Used to join a bot-registered user (to) with its Bitrix-synced copy (from).
+        bit_user_id: also link `to_user` to this Bitrix user in the same transaction.
+        """
         async with self.session_factory() as session:
             try:
                 async with session.begin():
@@ -114,6 +137,41 @@ class BitrixDB:
                         raise ValueError("One of the users was not found.")
 
                     to_user.full_name = from_user.full_name
+                    if bit_user_id is not None:
+                        to_user.bit_user_id = bit_user_id
+
+                    # settings an admin may have given the Bitrix user; to_user's own win
+                    for attr in ("role_id", "group_id", "max_active_tasks"):
+                        if getattr(to_user, attr) is None:
+                            setattr(to_user, attr, getattr(from_user, attr))
+
+                    # composite-key links: move the ones to_user lacks, drop the duplicates
+                    await session.execute(
+                        update(UserRole).where(
+                            UserRole.user_id == from_user_id,
+                            UserRole.role_id.not_in(select(UserRole.role_id).where(UserRole.user_id == to_user_id))
+                        ).values(user_id=to_user_id)
+                    )
+                    await session.execute(
+                        update(UserGroupRules).where(
+                            UserGroupRules.user_id == from_user_id,
+                            UserGroupRules.group_id.not_in(
+                                select(UserGroupRules.group_id).where(UserGroupRules.user_id == to_user_id)
+                            )
+                        ).values(user_id=to_user_id)
+                    )
+                    await session.execute(
+                        update(user_region).where(
+                            user_region.c.user_id == from_user_id,
+                            user_region.c.region_id.not_in(
+                                select(user_region.c.region_id).where(user_region.c.user_id == to_user_id)
+                            )
+                        ).values(user_id=to_user_id)
+                    )
+                    # the ORM would try to NULL these primary-key columns when deleting from_user
+                    await session.execute(delete(UserRole).where(UserRole.user_id == from_user_id))
+                    await session.execute(delete(UserGroupRules).where(UserGroupRules.user_id == from_user_id))
+                    await session.execute(delete(user_region).where(user_region.c.user_id == from_user_id))
 
                     # Обновить связи
                     await session.execute(

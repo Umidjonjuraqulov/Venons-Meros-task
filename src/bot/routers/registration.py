@@ -35,7 +35,14 @@ async def get_language(message: Message, state: FSMContext, access: str):
     if message.text in LANGUAGE_CHOICES.keys():
         choose_language = LANGUAGE_CHOICES[message.text]
 
-        if access:
+        if access == AccessLevelConst.BITRIX:
+            # pre-linked by BitSync.sync_users from the Bitrix "Telegram ID" field:
+            # the account and name already come from Bitrix, ask only the rest
+            await state.update_data({"language": choose_language})
+            await state.set_state(Registration.job_title)
+            await message.answer(_("reg.job_title", choose_language), reply_markup=ReplyKeyboardRemove())
+
+        elif access:
             user = await conf.bitrix_db.get_user(tg_id=message.from_user.id)
             if user:
                 user = user[0]
@@ -91,14 +98,29 @@ async def registration_phone(message: Message, state: FSMContext, bot: Bot):
         await state.set_state(Registration.checking)
         await message.answer(_("reg.done", language), reply_markup=ReplyKeyboardRemove())
 
-        user = await conf.bitrix_db.add_user(
-            full_name=name,
-            access_level=AccessLevelConst.USER,
-            tg_id=message.from_user.id,
-            job_title=job_title,
-            phone=phone_number,
-            language=language,
-        )
+        existing = await conf.bitrix_db.get_user(tg_id=message.from_user.id)
+        existing = existing[0] if existing else None
+        if existing:
+            # the Bitrix sync already created this person's row (pre-linked by Telegram ID): complete it
+            # instead of inserting a second row with the same tg_id
+            fields = dict(
+                job_title=job_title, phone=phone_number, language=language, access_level=AccessLevelConst.USER
+            )
+            if existing.role_id is None:  # update_user also gives the default role, as new users get below
+                user = await conf.bitrix_db.update_user(update_to=UserModel(**fields), tg_id=message.from_user.id)
+            else:  # keep the role an admin already set on the Bitrix user
+                user = await conf.bitrix_db.update_user_fields(existing.id, **fields)
+            name = existing.full_name
+
+        else:
+            user = await conf.bitrix_db.add_user(
+                full_name=name,
+                access_level=AccessLevelConst.USER,
+                tg_id=message.from_user.id,
+                job_title=job_title,
+                phone=phone_number,
+                language=language,
+            )
         conf.user_manager.update_user(message.from_user.id, AccessLevelConst.USER, lang)
 
         notify = REG_NOTIFY_ANS.format(
@@ -111,10 +133,11 @@ async def registration_phone(message: Message, state: FSMContext, bot: Bot):
         )
         await bot.send_message(conf.notify_chat_id, notify)
 
-        # give role ID 2
-        # confirm user immediently
-        user = await conf.bitrix_db.update_user(update_to=UserModel(access_level=user.access_level), tg_id=int(user.tg_id))
-        conf.user_manager.update_user(tg_id=int(user.tg_id), access_level=user.access_level)
+        if not existing:
+            # give role ID 2
+            # confirm user immediently
+            user = await conf.bitrix_db.update_user(update_to=UserModel(access_level=user.access_level), tg_id=int(user.tg_id))
+            conf.user_manager.update_user(tg_id=int(user.tg_id), access_level=user.access_level)
 
 
         msg = _("reg.success", language)
@@ -126,11 +149,11 @@ async def registration_phone(message: Message, state: FSMContext, bot: Bot):
 
     if message.text and check_phone_numbers(message.text):
         data = await state.get_data()
-        await save_registration(message.text, data["name"], data["job_title"], data["language"])
+        await save_registration(message.text, data.get("name"), data["job_title"], data["language"])
 
     elif message.contact:
         data = await state.get_data()
-        await save_registration(message.contact.phone_number, data["name"], data["job_title"], language)
+        await save_registration(message.contact.phone_number, data.get("name"), data["job_title"], language)
 
     else:
         await message.answer(_("wrong_format", language))

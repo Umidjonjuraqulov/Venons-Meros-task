@@ -39,7 +39,7 @@ def check_admin_access(func):
 @commands_router.message(CommandStart())
 async def start_command(message: Message, state: FSMContext, access: str, language: str) -> None:
     """Start command handler."""
-    if access is None:
+    if access is None or access == AccessLevelConst.BITRIX:  # BITRIX: pre-linked by the sync, not registered yet
         await to_registration(message.from_user.id, state)
         return
 
