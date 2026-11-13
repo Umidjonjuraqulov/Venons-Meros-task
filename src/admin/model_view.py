@@ -88,26 +88,30 @@ class UserAdmin(ModelView, model=User):
 
     @staticmethod
     async def update_users():
-        cache["bit_users_select"].clear()
-        cache["bit_users_select"].append((0, "Выберите для изменения"))
+        users = await conf.bitrix_db.get_users()
 
-        for user in await conf.bitrix_db.get_users():
-            cache["all_users"][user.id] = user
-            if user.bit_user_id:
-                cache["bit_users_select"].append((user.bit_user_id, user.full_name))
+        bit_users_select = [(0, "Выберите для изменения")]
+        bit_users_select += [(user.bit_user_id, user.full_name) for user in users if user.bit_user_id]
+
+        # Swap in place, with no await in between: the form's `choices` holds a reference
+        # to this list, and a concurrent request must never see it half-filled.
+        cache["all_users"].clear()
+        cache["all_users"].update({user.id: user for user in users})
+        cache["bit_users_select"][:] = bit_users_select
 
     async def scaffold_form(self, rules: list[str] | None = None):
-        """load users for select users for link bitrix"""
-        form = await super().scaffold_form()
-        if not cache["all_users"]:
-            await self.update_users()
-
-        return form
+        """Reload users on every form open, so Bitrix users added by sync_users
+        show up in the "Bitrix ID" select without restarting the process."""
+        await self.update_users()
+        return await super().scaffold_form()
 
     async def on_model_change(self, data, model, is_created, request):
-        if data.get("bit_user_id") and (cache["all_users"].get(model.id).bit_user_id != data.get("bit_user_id")):
-            bit_user = await conf.bitrix_db.get_user(bit_id=data.get("bit_user_id"))
-            await conf.bitrix_db.merge_users(from_user_id=bit_user[0].id, to_user_id=model.id)
+        # sqladmin calls this before applying `data`, so `model` still holds the old values
+        new_bit_user_id = data.get("bit_user_id")
+        if new_bit_user_id and model.bit_user_id != new_bit_user_id:
+            bit_user = await conf.bitrix_db.get_user(bit_id=new_bit_user_id)
+            if bit_user and bit_user[0].id != model.id:
+                await conf.bitrix_db.merge_users(from_user_id=bit_user[0].id, to_user_id=model.id)
 
     async def after_model_change(self, data, model, is_created, request):
         access_level = data.get("access_level")
